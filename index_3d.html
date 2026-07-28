@@ -1,0 +1,2575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Home Energy Study — 3D (Phase C: modular house + real assets)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Fredoka',system-ui,-apple-system,sans-serif}
+body{background:#0a0f1e;color:#e2e8f0;min-height:100vh;padding:20px;max-width:1900px;margin:0 auto}
+h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.2px}
+.note{font-size:17px;color:rgba(255,255,255,0.55);margin-bottom:16px;max-width:820px;line-height:1.5}
+#game-title{border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:14px;margin-bottom:4px}
+#game-title h1{font-size:26px;margin-bottom:8px}
+#game-title .note{font-size:15px;line-height:1.5;margin-bottom:0;max-width:none}
+#output{font-family:'Courier New',monospace;font-size:13px;line-height:1.6;white-space:pre-wrap;background:#111827;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:20px;max-width:820px;display:none}
+#game-layout{display:flex;gap:14px}
+#scene-container{flex:1;height:min(85vh,1100px);background:#0f172a;border:1px solid rgba(255,255,255,0.08);border-radius:8px;overflow:hidden;position:relative}
+#scene-container canvas{display:block;width:100%;height:100%}
+#scene-status{position:absolute;top:8px;left:12px;font-size:11px;color:rgba(255,255,255,0.4);font-family:'Courier New',monospace;pointer-events:none}
+#css2d-layer{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden}
+.room-label{font-size:16px;font-weight:600;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:0.5px;pointer-events:none;white-space:nowrap}
+#need-alerts-layer{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden}
+.need-alert{position:absolute;transform:translate(-50%,-100%);font-size:28px;line-height:1;display:none;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.7));animation:need-bob 1.4s ease-in-out infinite}
+@keyframes need-bob{0%,100%{margin-top:0}50%{margin-top:-5px}}
+
+/* ── Guided tutorial — a non-blocking step card (game stays fully
+   clickable underneath, since each step needs the real device interaction
+   to happen) plus a bouncing pointer projected onto whichever device is
+   the current step's target ── */
+#tutorial-step-card{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:20;background:linear-gradient(180deg,#1c2a4a,#101827);border:2px solid rgba(74,222,128,0.55);border-radius:18px;padding:14px 26px;max-width:min(88%,480px);text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.5);pointer-events:none}
+.tut-emoji{font-size:30px;margin-bottom:2px}
+.tut-title{font-size:21px;font-weight:600;color:#fff;margin-bottom:4px}
+.tut-text{font-size:15px;color:rgba(255,255,255,0.75);line-height:1.4}
+.tut-progress{font-size:12px;font-weight:500;color:#4ade80;margin-top:8px;text-transform:uppercase;letter-spacing:0.5px}
+.tut-dismiss-btn{pointer-events:auto;margin-top:12px;font-family:'Fredoka',sans-serif;background:linear-gradient(180deg,#4ade80,#22c55e);color:#052e12;border:none;border-radius:12px;padding:8px 22px;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 3px 0 #15803d}
+.tut-dismiss-btn:active{transform:translateY(2px);box-shadow:0 1px 0 #15803d}
+#tutorial-pointer{position:absolute;transform:translate(-50%,-100%);font-size:38px;line-height:1;display:none;pointer-events:none;animation:need-bob 1s ease-in-out infinite;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.6));z-index:19}
+
+#control-panel{width:330px;flex-shrink:0;background:#1e293b;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:18px;display:flex;flex-direction:column;gap:10px}
+#panel-placeholder{font-size:17px;color:rgba(255,255,255,0.45);line-height:1.5}
+.panel-section{display:none}
+.panel-title{font-size:20px;font-weight:600;color:#fff;margin-bottom:12px}
+.panel-readout{font-size:16px;color:rgba(255,255,255,0.55);margin-top:10px;line-height:1.5}
+#control-panel input[type=range]{width:100%}
+#control-panel button{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#e2e8f0;padding:10px 16px;border-radius:10px;font-size:16px;font-weight:500;cursor:pointer}
+#control-panel button:hover{background:rgba(255,255,255,0.12)}
+
+#info-panel{border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:12px;margin-bottom:2px}
+.info-row{display:flex;justify-content:space-between;align-items:baseline;font-size:16px;margin-bottom:8px}
+.info-label{color:rgba(255,255,255,0.45)}
+.info-value{color:#fff;font-weight:600;text-align:right}
+.rate-strip{display:flex;height:20px;border-radius:6px;overflow:hidden;margin:8px 0 6px;position:relative;box-shadow:inset 0 1px 3px rgba(0,0,0,0.35)}
+.rate-strip .rs-hour{flex:1}
+.rate-strip .rs-now{position:absolute;top:-3px;width:3px;height:26px;background:#fff;border-radius:2px;box-shadow:0 0 6px rgba(255,255,255,0.9);transition:left .3s linear}
+.rate-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:12px}
+.rl-item{display:flex;align-items:center;gap:5px}
+.rl-swatch{width:10px;height:10px;border-radius:3px;display:inline-block;flex-shrink:0}
+#dr-banner{background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.35);border-radius:6px;padding:8px 10px;font-size:14px;color:#93c5fd;margin-bottom:8px;line-height:1.5}
+.info-title{font-size:14px;font-weight:500;text-transform:uppercase;letter-spacing:0.5px;color:rgba(255,255,255,0.4);margin-bottom:6px}
+.cost-row{display:flex;justify-content:space-between;font-size:15px;color:rgba(255,255,255,0.7);padding:2px 0}
+.cost-row .cost-amount{color:#fff}
+
+#hud-bar{display:flex;align-items:center;gap:24px;background:linear-gradient(180deg,#1b2744,#111827);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:14px 20px;margin-bottom:14px;flex-wrap:wrap;box-shadow:0 6px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)}
+.hud-stat{display:flex;flex-direction:column;gap:3px}
+.hud-label{font-size:13px;font-weight:500;text-transform:uppercase;letter-spacing:0.8px;color:rgba(255,255,255,0.45)}
+.hud-value{font-size:26px;font-weight:600;color:#fff;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,0.35)}
+.hud-comfort-value{display:flex;align-items:center;gap:8px}
+#hud-comfort-stat{position:relative;cursor:help}
+.comfort-bar{position:relative;display:inline-block;width:96px;height:16px;background:rgba(255,255,255,0.14);border-radius:999px;overflow:hidden;vertical-align:middle;box-shadow:inset 0 1px 3px rgba(0,0,0,0.4)}
+.comfort-bar-fill{position:absolute;top:0;left:0;height:100%;border-radius:999px;transition:width .3s ease, background-color .3s ease}
+.comfort-tooltip{position:absolute;top:calc(100% + 10px);left:0;z-index:30;background:linear-gradient(180deg,#1c2a4a,#101827);border:1px solid rgba(255,255,255,0.15);border-radius:12px;padding:10px 14px;font-size:14px;font-weight:500;color:rgba(255,255,255,0.85);white-space:nowrap;box-shadow:0 10px 24px rgba(0,0,0,0.45);opacity:0;pointer-events:none;transform:translateY(-4px);transition:opacity .15s ease, transform .15s ease}
+.comfort-tooltip div{display:flex;justify-content:space-between;gap:14px;padding:1px 0}
+.comfort-tooltip .ct-total{color:#fff;font-weight:700;border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:4px;margin-bottom:4px}
+#hud-comfort-stat:hover .comfort-tooltip, #hud-comfort-stat:focus-within .comfort-tooltip{opacity:1;transform:translateY(0)}
+.hud-speed{display:flex;gap:3px;margin-left:auto;background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.12);border-radius:999px;padding:4px;box-shadow:inset 0 2px 5px rgba(0,0,0,0.35)}
+.hud-speed-btn{background:transparent;border:none;color:rgba(255,255,255,0.6);padding:8px 18px;border-radius:999px;font-size:16px;font-weight:500;cursor:pointer;transition:all .15s ease}
+.hud-speed-btn:hover{background:rgba(255,255,255,0.1);color:#fff}
+.hud-speed-btn.active{background:linear-gradient(180deg,#4ade80,#22c55e);color:#052e12;font-weight:700;box-shadow:0 2px 6px rgba(34,197,94,0.45)}
+
+/* ── Start / end screen overlays — a full-viewport Sims-style takeover,
+   shown before the study begins and again when it ends ── */
+.game-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(30,41,59,0.97),rgba(6,9,18,0.99));padding:24px}
+.overlay-card{background:linear-gradient(180deg,#1c2a4a,#101827);border:1px solid rgba(255,255,255,0.12);border-radius:26px;padding:38px 42px;max-width:520px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08);text-align:center;max-height:88vh;overflow-y:auto}
+.overlay-emoji{font-size:68px;margin-bottom:12px;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.35))}
+.overlay-title{font-size:40px;font-weight:600;color:#fff;margin-bottom:12px;letter-spacing:0.2px}
+.overlay-subtitle{font-size:18px;color:rgba(255,255,255,0.65);line-height:1.55;margin-bottom:24px}
+.game-btn{font-family:'Fredoka',sans-serif;background:linear-gradient(180deg,#4ade80,#22c55e);color:#052e12;border:none;border-radius:16px;padding:16px 34px;font-size:22px;font-weight:600;cursor:pointer;box-shadow:0 4px 0 #15803d, 0 6px 14px rgba(0,0,0,0.3);transition:transform .08s ease;margin:4px}
+.game-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #15803d}
+.game-btn.secondary{background:linear-gradient(180deg,#60a5fa,#3b82f6);box-shadow:0 4px 0 #1d4ed8, 0 6px 14px rgba(0,0,0,0.3)}
+.overlay-stats{display:flex;flex-direction:column;gap:8px;margin:18px 0;text-align:left;background:rgba(0,0,0,0.22);border-radius:14px;padding:16px 18px}
+.overlay-stat-row{display:flex;justify-content:space-between;font-size:17px;color:rgba(255,255,255,0.8)}
+.overlay-stat-row b{color:#fff;font-weight:600}
+.overlay-benchmarks{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.benchmark-card{flex:1 1 28%;background:rgba(255,255,255,0.06);border-radius:12px;padding:12px 6px;text-align:center}
+.benchmark-card.you{background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.35)}
+.benchmark-card .bl{font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:0.5px;color:rgba(255,255,255,0.5);margin-bottom:5px}
+.benchmark-card .bv{font-size:20px;font-weight:600;color:#fff}
+.completion-code{font-family:'Courier New',monospace;background:rgba(0,0,0,0.3);border:1px dashed rgba(255,255,255,0.3);border-radius:8px;padding:10px;font-size:14px;color:#93c5fd;margin:16px 0;cursor:pointer;user-select:all;word-break:break-all}
+.overlay-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+/* ── End-of-day report — a wider card so the per-device 24-hour timeline
+   has room to breathe; reuses the same off-peak/regular/peak tier colors
+   as the rate strip so the two stay visually consistent. ── */
+.day-end-card{max-width:640px}
+.dt-row{margin-bottom:16px;text-align:left}
+.dt-row-label{font-size:14px;font-weight:600;color:rgba(255,255,255,0.75);margin-bottom:5px}
+.dt-bar{position:relative;height:22px;border-radius:6px;overflow:hidden;display:flex;box-shadow:inset 0 1px 3px rgba(0,0,0,0.4)}
+.dt-bar .dt-hour{flex:1;opacity:0.3}
+.dt-seg{position:absolute;top:2px;height:18px;background:#fff;opacity:0.92;border-radius:4px;box-shadow:0 0 0 1px rgba(255,255,255,0.6),0 2px 4px rgba(0,0,0,0.4)}
+.dt-tick{position:absolute;top:-3px;width:3px;height:28px;background:#fff;border-radius:2px;box-shadow:0 0 5px rgba(255,255,255,0.9)}
+.dt-intervals{font-size:13px;color:rgba(255,255,255,0.5);margin-top:6px;line-height:1.6}
+.dt-intervals b{color:rgba(255,255,255,0.85);font-weight:500}
+
+@media (max-width: 700px){
+  body{padding:12px}
+  #hud-bar{gap:12px;padding:10px 12px}
+  .hud-value{font-size:18px}
+  #game-layout{flex-direction:column;max-width:100%}
+  #scene-container{height:360px}
+  #control-panel{width:100%}
+}
+</style>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.185.1/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.185.1/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<script>
+// Auto-seeds the arrange-mode furniture layout used when this game was
+// shared, so it looks the same for whoever opens this copy -- without this,
+// a fresh browser has no saved layout and falls back to the plain default
+// room (arrange-mode layouts live in localStorage, which isn't a file and
+// can't be bundled into a shared zip any other way). Only seeds if this
+// browser doesn't already have a layout saved, so it never overwrites
+// someone's own arrangement.
+(function(){
+  var KEY = 'homeEnergyStudy3d_layout_v1';
+  if(!localStorage.getItem(KEY)){
+    localStorage.setItem(KEY, "{\"bedroom_window\":{\"x\":-6,\"z\":-9.75,\"rotY\":0,\"scale\":1},\"living_window\":{\"x\":1,\"z\":-9.75,\"rotY\":0,\"scale\":1},\"kitchen_window\":{\"x\":-4,\"z\":9.4,\"rotY\":-3.142,\"scale\":1},\"bathroom_window\":{\"x\":9.75,\"z\":2,\"rotY\":-1.571,\"scale\":1},\"front_door\":{\"x\":7.1,\"z\":-6,\"rotY\":0,\"scale\":1},\"back_door\":{\"x\":-2,\"z\":7,\"rotY\":1.571,\"scale\":1},\"thermostat\":{\"x\":6,\"z\":-7.85,\"rotY\":0,\"scale\":1},\"lights\":{\"x\":7,\"z\":-1,\"rotY\":0,\"scale\":1},\"hotwater\":{\"x\":7,\"z\":6.5,\"rotY\":0,\"scale\":1},\"bed\":{\"x\":-2.5,\"z\":-6,\"rotY\":-1.571,\"scale\":1},\"couch\":{\"x\":3,\"z\":-3,\"rotY\":-3.142,\"scale\":1},\"fridge\":{\"x\":-0.5,\"z\":4.5,\"rotY\":-1.571,\"scale\":1},\"laundry\":{\"x\":7,\"z\":5,\"rotY\":3.142,\"scale\":1},\"coffee_table\":{\"x\":3,\"z\":-5.5,\"rotY\":0,\"scale\":1},\"oven\":{\"x\":-7,\"z\":3,\"rotY\":0,\"scale\":1.21},\"toilet\":{\"x\":6.5,\"z\":1.5,\"rotY\":-0.785,\"scale\":1},\"dishwasher\":{\"x\":-7,\"z\":4.5,\"rotY\":1.571,\"scale\":1.61},\"tv\":{\"x\":3,\"z\":-7.7,\"rotY\":0,\"scale\":1},\"bedroom_plant\":{\"x\":-6.5,\"z\":-1.3,\"rotY\":0,\"scale\":1},\"bathtub\":{\"x\":2,\"z\":7,\"rotY\":-4.712,\"scale\":1},\"cabinet\":{\"x\":-8,\"z\":5.5,\"rotY\":0,\"scale\":1},\"rug\":{\"x\":3,\"z\":-5.5,\"rotY\":0,\"scale\":1},\"bedroom_painting\":{\"x\":-7.5,\"z\":-4.5,\"rotY\":-6.283,\"scale\":1},\"sink\":{\"x\":4,\"z\":0.5,\"rotY\":-1.571,\"scale\":1},\"shelf\":{\"x\":-0.5,\"z\":6.5,\"rotY\":-1.571,\"scale\":1},\"living_painting\":{\"x\":7.5,\"z\":-5,\"rotY\":-3.142,\"scale\":1},\"mirror\":{\"x\":4,\"z\":0.15,\"rotY\":-1.571,\"scale\":1},\"custom_0_doormat\":{\"x\":7.5,\"z\":-2,\"rotY\":-1.571,\"scale\":1,\"spawn\":{\"source\":\"psx\",\"file\":\"doormat\"}},\"custom_3_trashBin\":{\"x\":-0.5,\"z\":0.5,\"rotY\":0,\"scale\":1,\"spawn\":{\"source\":\"psx\",\"file\":\"trashBin\"}},\"custom_4_Bathroom_Sink\":{\"x\":0,\"z\":0,\"rotY\":0,\"scale\":1,\"spawn\":{\"source\":\"fbx\",\"file\":\"Bathroom/Sink\"}},\"custom_5_Bathroom_Sink\":{\"x\":0,\"z\":0,\"rotY\":0,\"scale\":1,\"spawn\":{\"source\":\"fbx\",\"file\":\"Bathroom/Sink\"}},\"custom_6_Bathroom_Sink\":{\"x\":0,\"z\":0,\"rotY\":0,\"scale\":1,\"spawn\":{\"source\":\"fbx\",\"file\":\"Bathroom/Sink\"}},\"custom_7_Bathroom_Sink\":{\"x\":0,\"z\":0,\"rotY\":0,\"scale\":1,\"spawn\":{\"source\":\"fbx\",\"file\":\"Bathroom/Sink\"}},\"custom_8_Bathroom_Sink\":{\"x\":0,\"z\":0,\"rotY\":0,\"scale\":1,\"spawn\":{\"source\":\"fbx\",\"file\":\"Bathroom/Sink\"}},\"custom_9_cabinetBig\":{\"x\":-7.5,\"z\":-1,\"rotY\":-4.712,\"scale\":1,\"spawn\":{\"source\":\"psx\",\"file\":\"cabinetBig\"}},\"custom_10_cabinetHigh\":{\"x\":0,\"z\":0,\"rotY\":0,\"scale\":1,\"spawn\":{\"source\":\"psx\",\"file\":\"cabinetHigh\"}},\"custom_11_cabinetHigh\":{\"x\":0,\"z\":0,\"rotY\":0,\"scale\":1,\"spawn\":{\"source\":\"psx\",\"file\":\"cabinetHigh\"}},\"custom_12_cabinetHigh\":{\"x\":0,\"z\":0,\"rotY\":0,\"scale\":1,\"spawn\":{\"source\":\"psx\",\"file\":\"cabinetHigh\"}},\"custom_13_cabinetHighCorner\":{\"x\":0,\"z\":0,\"rotY\":0,\"scale\":1,\"spawn\":{\"source\":\"psx\",\"file\":\"cabinetHighCorner\"}},\"custom_14_cabinetHighCorner\":{\"x\":-2,\"z\":0.5,\"rotY\":0,\"scale\":2.5,\"spawn\":{\"source\":\"psx\",\"file\":\"cabinetHighCorner\"}},\"custom_15_cabinetBig\":{\"x\":-7.5,\"z\":-2.5,\"rotY\":-4.712,\"scale\":1,\"spawn\":{\"source\":\"psx\",\"file\":\"cabinetBig\"}},\"custom_17_cabinetSink\":{\"x\":-8,\"z\":6.5,\"rotY\":0,\"scale\":1.1,\"spawn\":{\"source\":\"psx\",\"file\":\"cabinetSink\"}},\"custom_18_cabinetLow\":{\"x\":-6.5,\"z\":8,\"rotY\":-4.712,\"scale\":1,\"spawn\":{\"source\":\"psx\",\"file\":\"cabinetLow\"}},\"custom_19_cabinetLowCorner\":{\"x\":-7.5,\"z\":8,\"rotY\":-4.712,\"scale\":1,\"spawn\":{\"source\":\"psx\",\"file\":\"cabinetLowCorner\"}},\"custom_0_couchBig2\":{\"x\":0.5,\"z\":-5.5,\"rotY\":-4.712,\"scale\":1,\"spawn\":{\"source\":\"psx\",\"file\":\"couchBig2\"}},\"custom_6_table\":{\"x\":-7,\"z\":-6.5,\"rotY\":-1.571,\"scale\":1,\"spawn\":{\"source\":\"psx\",\"file\":\"table\"}},\"custom_12_chair2\":{\"x\":-6,\"z\":-6.5,\"rotY\":-1.571,\"scale\":0.91,\"spawn\":{\"source\":\"psx\",\"file\":\"chair2\"}}}");
+  }
+})();
+</script>
+
+<div class="game-overlay" id="start-screen">
+  <div class="overlay-card">
+    <div class="overlay-emoji">🏡</div>
+    <div class="overlay-title">Home Energy Study</div>
+    <div class="overlay-subtitle">You're moving in for 3 days. Everything you run — the thermostat, hot water, dishwasher, laundry, lights — costs money, and electricity is cheapest overnight and priciest in the early evening. Run things whenever you like and comfort stays high, but costs add up fast. Let things wait for cheaper hours and you'll save money, but comfort may dip. Your job is finding the right balance. First, let's meet Remy and try everything together!</div>
+    <button class="game-btn" id="start-btn">Let's go! →</button>
+  </div>
+</div>
+
+<div class="game-overlay" id="tutorial-outro" style="display:none">
+  <div class="overlay-card">
+    <div class="overlay-emoji">🎉</div>
+    <div class="overlay-title">You're ready!</div>
+    <div class="overlay-subtitle">Awesome job! Now it's the real thing — keep Remy comfy and your energy costs low over the next 3 days. Good luck!</div>
+    <button class="game-btn" id="tutorial-outro-btn">Start the study →</button>
+  </div>
+</div>
+
+<div class="game-overlay" id="day-end-screen" style="display:none">
+  <div class="overlay-card day-end-card">
+    <div class="overlay-emoji">📅</div>
+    <div class="overlay-title" id="day-end-title">Day 1 complete</div>
+    <div class="overlay-subtitle" id="day-end-subtitle">Here's what ran today, and when.</div>
+    <div class="overlay-stats" id="day-end-stats"></div>
+    <div id="day-end-timeline"></div>
+    <button class="game-btn" id="day-end-continue-btn">Continue to Day 2 →</button>
+  </div>
+</div>
+
+<div class="game-overlay" id="end-screen" style="display:none">
+  <div class="overlay-card">
+    <div class="overlay-emoji" id="end-emoji">🎉</div>
+    <div class="overlay-title" id="end-title">Study complete!</div>
+    <div class="overlay-subtitle" id="end-subtitle">Here's how you did over the 3 days.</div>
+    <div class="overlay-stats" id="end-stats"></div>
+    <div class="overlay-benchmarks" id="end-benchmarks"></div>
+    <div class="completion-code" id="end-code" title="Click to select, then copy"></div>
+    <div class="overlay-actions">
+      <button class="game-btn secondary" id="end-download-btn">Download CSV</button>
+    </div>
+  </div>
+</div>
+
+<!-- "Happy Adventure (Loop)" by TinyWorlds, CC0 (public domain) — https://opengameart.org/content/happy-adventure-loop -->
+<audio id="bg-music" loop preload="auto" src="/UI_Assets/Sounds/happy-adventure-loop.mp3"></audio>
+
+<div id="hud-bar">
+  <div class="hud-stat"><span class="hud-label">Day / Time</span><span class="hud-value" id="hud-clock">Day 1 · 12:00 AM</span></div>
+  <div class="hud-stat" id="hud-comfort-stat">
+    <span class="hud-label">Comfort</span>
+    <span class="hud-value hud-comfort-value">
+      <span id="hud-comfort-emoji">😊</span>
+      <span class="comfort-bar" id="comfort-bar" tabindex="0"><span class="comfort-bar-fill" id="comfort-bar-fill"></span></span>
+    </span>
+    <div class="comfort-tooltip" id="comfort-tooltip"></div>
+  </div>
+  <div class="hud-stat"><span class="hud-label" id="hud-metric-label">Cost so far</span><span class="hud-value" id="hud-metric-value">$0.00</span></div>
+  <div class="hud-speed">
+    <button id="btn-mute" class="hud-speed-btn" title="Mute/unmute music">🔊</button>
+    <button id="btn-pause" class="hud-speed-btn">Pause</button>
+    <button id="btn-1x" class="hud-speed-btn active">1x</button>
+    <button id="btn-2x" class="hud-speed-btn">2x</button>
+    <button id="btn-3x" class="hud-speed-btn">3x</button>
+  </div>
+</div>
+<div id="game-layout">
+  <div id="scene-container"><div id="scene-status">loading…</div><div id="css2d-layer"></div>
+    <div id="tutorial-step-card" style="display:none">
+      <div class="tut-emoji" id="tut-step-emoji">🌡️</div>
+      <div class="tut-title" id="tut-step-title">Thermostat</div>
+      <div class="tut-text" id="tut-step-text"></div>
+      <div class="tut-progress" id="tut-step-progress"></div>
+      <button class="tut-dismiss-btn" id="tut-dismiss-btn" style="display:none">Got it →</button>
+    </div>
+    <div id="tutorial-pointer">👇</div>
+    <div id="need-alerts-layer">
+      <div class="need-alert" id="alert-thermostat">🥵</div>
+      <div class="need-alert" id="alert-hotwater">🥶</div>
+      <div class="need-alert" id="alert-dishwasher">🍽️</div>
+      <div class="need-alert" id="alert-laundry">🧺</div>
+      <div class="need-alert" id="alert-lights">💡</div>
+    </div>
+  </div>
+  <div id="control-panel">
+    <div id="game-title">
+      <h1>Home Energy Study</h1>
+      <div class="note">Keep comfort high without letting costs pile up. Click a glowing appliance to adjust it, or click the floor to walk Remy there — check the rate strip below to see when electricity is cheap.</div>
+    </div>
+    <div id="info-panel">
+      <div class="info-row"><span class="info-label">Rate now</span><span class="info-value" id="info-rate">—</span></div>
+      <div class="rate-strip" id="rate-strip"></div>
+      <div class="rate-legend" id="rate-legend"></div>
+      <div id="dr-banner"></div>
+      <div class="info-title">Cost by device</div>
+      <div id="cost-breakdown"></div>
+    </div>
+    <div id="panel-placeholder">Click an appliance in the room to adjust it.</div>
+
+    <div class="panel-section" id="panel-thermostat">
+      <div class="panel-title">🌡️ Thermostat</div>
+      <input type="range" min="62" max="82" id="thermoSlider">
+      <div class="panel-readout" id="thermoReadout"></div>
+    </div>
+
+    <div class="panel-section" id="panel-hotwater">
+      <div class="panel-title">🚿 Hot Water</div>
+      <button id="hwToggleBtn">Toggle</button>
+      <div class="panel-readout" id="hwReadout"></div>
+    </div>
+
+    <div class="panel-section" id="panel-dishwasher">
+      <div class="panel-title">🍽️ Dishwasher</div>
+      <button id="dishRunBtn">Run now</button>
+      <div class="panel-readout" id="dishReadout"></div>
+    </div>
+
+    <div class="panel-section" id="panel-laundry">
+      <div class="panel-title">👕 Laundry</div>
+      <button id="laundryRunBtn">Run now</button>
+      <div class="panel-readout" id="laundryReadout"></div>
+    </div>
+
+    <div class="panel-section" id="panel-lights">
+      <div class="panel-title">💡 Lights</div>
+      <button id="lightsToggleBtn">Toggle</button>
+      <div class="panel-readout" id="lightsReadout"></div>
+    </div>
+  </div>
+</div>
+<pre id="output">running self-test…</pre>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════
+// PHASE A — continuous-time simulation engine + data model
+// Ported from index_2_2026-07-23_TA.html's turn-based/per-block engine.
+// Same coefficients/exponents/thresholds throughout — only the integration
+// method changes (discrete per-whole-hour loops → continuous per-dt ticks).
+// See /Users/tarunarasu/.claude/plans/merry-knitting-brook.md for the full
+// design rationale and the parity-check results that validated this approach.
+// ══════════════════════════════════════════════════════════════════════════
+
+const CONDITION=(()=>{try{return new URLSearchParams(window.location.search).get('condition')||'cost';}catch(e){return'cost';}})();
+const SEED=(()=>{try{return parseInt(new URLSearchParams(window.location.search).get('seed')||'42');}catch(e){return 42;}})();
+
+// ── WEATHER (flattened + continuously interpolated, same seed/curve as before) ──
+function seededRng(s){let x=s;return()=>{x=(x*9301+49297)%233280;return x/233280;};}
+const NJ_BASE=[72,71,70,69,68,68,70,73,77,81,84,87,89,91,92,93,92,90,87,84,81,79,77,75];
+function makeDay(seed){const r=seededRng(seed);return NJ_BASE.map(t=>Math.round(t+(r()-0.5)*6));}
+// flattened into one 72-entry array instead of 3 independent 24-entry days, so
+// interpolating across a midnight boundary doesn't produce a discontinuous jump
+const OUTDOOR_TEMPS_72=[...makeDay(SEED),...makeDay(SEED+1),...makeDay(SEED+2)];
+function outdoorTempAt(gameTime){
+  let h=Math.floor(gameTime),frac=gameTime-h;
+  let a=OUTDOOR_TEMPS_72[Math.min(h,71)],b=OUTDOOR_TEMPS_72[Math.min(h+1,71)];
+  return a+(b-a)*frac;
+}
+// window-average matching the old blockAvgTemp exactly (sampling at whole-hour
+// marks where outdoorTempAt() returns the exact original anchor value)
+function windowAvgOutdoorTemp(dayIdx,startHour,endHour){
+  let absStart=dayIdx*24+startHour,absEnd=dayIdx*24+endHour,sum=0,count=0;
+  for(let h=absStart;h<absEnd;h++){sum+=outdoorTempAt(h);count++;}
+  return sum/count;
+}
+
+// ── TIME-OF-USE RATES (indexed by hour-of-day, unchanged arrays) ────────────
+const TOU_RATES_24=[0.07,0.07,0.07,0.07,0.07,0.07,0.14,0.14,0.14,0.14,0.14,0.14,0.14,0.14,0.14,0.14,0.32,0.32,0.32,0.32,0.32,0.14,0.14,0.14];
+const TOU_TIER_24=['super','super','super','super','super','super','off','off','off','off','off','off','off','off','off','off','peak','peak','peak','peak','peak','off','off','off'];
+const TOU_LABEL={super:'Cheapest time (overnight)',off:'Regular price',peak:'Most expensive time (early evening)'};
+const TOU_LEGEND_LABEL={super:'Off-peak (cheapest)',off:'Regular',peak:'Peak (most expensive)'};
+const TOU_TIER_COLOR={super:'#38bdf8',off:'#64748b',peak:'#f87171'};
+function rateAt(gameTime){return TOU_RATES_24[Math.floor(gameTime%24)];}
+function tierAt(gameTime){return TOU_TIER_24[Math.floor(gameTime%24)];}
+
+// ── 24-hour rate schedule strip — renders once (the schedule itself never
+// changes); only the current-hour marker moves, updated every frame from
+// updateInfoPanel(). Lets a player see the whole day's cheap/regular/peak
+// shape at a glance instead of just the current instant's rate.
+function renderRateStrip(){
+  let stripEl = document.getElementById('rate-strip');
+  if(!stripEl) return;
+  stripEl.innerHTML = TOU_TIER_24.map(tier=>'<div class="rs-hour" style="background:'+TOU_TIER_COLOR[tier]+'"></div>').join('') +
+    '<div class="rs-now" id="rate-strip-now"></div>';
+  let legendEl = document.getElementById('rate-legend');
+  if(legendEl){
+    legendEl.innerHTML = Object.keys(TOU_LEGEND_LABEL).map(tier=>
+      '<span class="rl-item"><span class="rl-swatch" style="background:'+TOU_TIER_COLOR[tier]+'"></span>'+TOU_LEGEND_LABEL[tier]+'</span>'
+    ).join('');
+  }
+}
+renderRateStrip();
+
+// ── DEMAND RESPONSE WINDOWS (same real-world timing, expressed as hour ranges) ──
+const DR_EVENTS=[{day:0,startHour:12,endHour:16},{day:1,startHour:16,endHour:20},{day:2,startHour:12,endHour:16}];
+function activeDrEvent(gameTime){
+  let day=Math.floor(gameTime/24),hod=gameTime%24;
+  return DR_EVENTS.find(e=>e.day===day&&hod>=e.startHour&&hod<e.endHour)||null;
+}
+
+const UA=250,COP=2.5,COMFORT_TEMP=70;
+const DISH_OVERDUE_HOURS=48,LAUNDRY_OVERDUE_HOURS=72;
+const TOTAL_GAME_HOURS=72,SIM_DT_HOURS=1/60,DECISION_INTERVAL_HOURS=1;
+// nominal run durations sized so total energy per run matches the old one-time
+// kWh figures exactly (1.3 kWh dishwasher, 3.5 kWh laundry) while running continuously
+const DISH_NOMINAL_HOURS=1,DISH_RATED_KW=1.3/DISH_NOMINAL_HOURS;
+const LAUNDRY_NOMINAL_HOURS=2,LAUNDRY_RATED_KW=3.5/LAUNDRY_NOMINAL_HOURS;
+
+function scoreEmoji(s){return s>=90?'😊':s>=70?'🙂':s>=50?'😐':s>=30?'😟':'😰';}
+function scoreBarColor(s){return s>=90?'#4ade80':s>=70?'#a3e635':s>=50?'#facc15':s>=30?'#fb923c':'#f87171';}
+function isEveningHour(gameTime){return(gameTime%24)>=20;}
+function clamp0to100(x){return Math.max(0,Math.min(100,x));}
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+function freshState(){
+  return {
+    gameTime:0,
+    devices:{thermostat:true,hotwater:true,dishwasher:true,laundry:true,lights:true},
+    setpoint:72,hwOn:true,hwOffHours:0,
+    dish:{overdueHoursRaw:30,running:false,runEndTime:null},
+    laundry:{overdueHoursRaw:60,running:false,runEndTime:null,usedToday:false},
+    lightsOn:false,eveningDarkHours:0,
+    cT:100,cW:100,cD:100,cL:100,cLi:100,
+    totalKwh:0,totalCost:0,costByTier:{super:0,off:0,peak:0},kwhByDevice:{hvac:0,hw:0,dish:0,laundry:0,lights:0},
+    costByDevice:{hvac:0,hw:0,dish:0,laundry:0,lights:0},
+    drSavings:0,drWindow:{active:false,event:null,cumulativeKwh:0,windowStartTime:null,avgOutdoorTemp:null},
+    speedMultiplier:1,paused:false,done:false,gameOver:false,
+    lastSnapshotTime:0,
+    lastDayIndex:0,dayEndPending:null, // day-boundary tracking for the end-of-day report (day 3's end uses the existing end-of-study screen instead)
+  };
+}
+let state=freshState();
+// pristine clone captured before any gameplay mutates state — benchmark
+// simulations start from exactly this, never a hand-copied duplicate
+const INITIAL_STATE=JSON.parse(JSON.stringify(state));
+
+const BASE_WEIGHTS={T:0.40,W:0.20,D:0.15,L:0.15,Li:0.10};
+const WEIGHT_DEVICE={T:'thermostat',W:'hotwater',D:'dishwasher',L:'laundry',Li:'lights'};
+const WEIGHT_LABEL={T:'Thermostat',W:'Hot water',D:'Dishwasher',L:'Laundry',Li:'Lights'};
+function composite(){
+  let keys=Object.keys(BASE_WEIGHTS).filter(k=>state.devices[WEIGHT_DEVICE[k]]);
+  let wSum=keys.reduce((s,k)=>s+BASE_WEIGHTS[k],0);
+  return keys.reduce((s,k)=>s+(BASE_WEIGHTS[k]/wSum)*state['c'+k],0);
+}
+function selectedDeviceKeys(){return['thermostat','hotwater','dishwasher','laundry','lights'].filter(k=>state.devices[k]);}
+
+// ── EVENT LOG ─────────────────────────────────────────────────────────────────
+let eventLog=[];
+function logEvent(type,value,extra){
+  eventLog.push({
+    timestamp_ms:Date.now(),
+    game_time_hours:+state.gameTime.toFixed(4),
+    day_index:Math.floor(state.gameTime/24),
+    hour_of_day:+((state.gameTime)%24).toFixed(3),
+    event_type:type,value,
+    device:(extra&&extra.device)||null,
+    outdoor_temp_f:Math.round(outdoorTempAt(state.gameTime)),
+    setpoint_f:state.setpoint,
+    tou_tier:tierAt(state.gameTime),tou_rate_per_kwh:rateAt(state.gameTime),
+    dr_window_active:state.drWindow.active,
+    dr_event_id:state.drWindow.active?(state.drWindow.event.day+'-'+state.drWindow.event.startHour):null,
+    comfort_composite:Math.round(composite()),
+    cT:Math.round(state.cT),cW:Math.round(state.cW),cD:Math.round(state.cD),cL:Math.round(state.cL),cLi:Math.round(state.cLi),
+    total_kwh_so_far:+state.totalKwh.toFixed(3),
+    total_cost_so_far:+state.totalCost.toFixed(3),
+    dr_savings_so_far:+state.drSavings.toFixed(2),
+    hw_on:state.hwOn,lights_on:state.lightsOn,
+    dish_running:state.dish.running,laundry_running:state.laundry.running,
+    hours_since_dish:+state.dish.overdueHoursRaw.toFixed(2),
+    hours_since_laundry:+state.laundry.overdueHoursRaw.toFixed(2),
+    devices_selected:selectedDeviceKeys().join('+'),
+    speed_multiplier:state.speedMultiplier,paused:state.paused,
+    condition:CONDITION,seed:SEED,
+    extra:extra||null
+  });
+}
+
+// ── DEMAND RESPONSE MATH (unchanged formulas, parameterized by a given avgOut) ──
+function drMinLoadKw(avgOut){return hvacKwh(82,avgOut);}
+function drThresholdKw(avgOut){return drMinLoadKw(avgOut)*1.15;}
+function drBaselineKw(avgOut,windowStartHour){
+  let base=hvacKwh(COMFORT_TEMP,avgOut);
+  if(state.devices.hotwater)base+=1.2;
+  if(state.devices.lights&&isEveningHour(windowStartHour))base+=0.5;
+  return base;
+}
+function drCredit(actualKw,avgOut,windowStartHour){
+  let threshold=drThresholdKw(avgOut);
+  if(actualKw<=threshold)return 2;
+  let baseline=drBaselineKw(avgOut,windowStartHour);
+  let gap=baseline-threshold;
+  if(gap<=0)return 0;
+  let closed=(baseline-actualKw)/gap;
+  return closed>=0.5?1:0;
+}
+function drTargetSetpoint(avgOut){
+  let maxDelta=drThresholdKw(avgOut)*COP*1000/UA;
+  let target=avgOut>=COMFORT_TEMP?avgOut-maxDelta:avgOut+maxDelta;
+  return Math.max(70,Math.min(78,Math.ceil(target)));
+}
+
+function updateDrWindow(dt){
+  let ev=activeDrEvent(state.gameTime);
+  if(ev&&!state.drWindow.active){
+    state.drWindow={
+      active:true,event:ev,cumulativeKwh:0,windowStartTime:state.gameTime,
+      avgOutdoorTemp:windowAvgOutdoorTemp(ev.day,ev.startHour,ev.endHour)
+    };
+    logEvent('dr_window_open','opened',{event:ev});
+  }
+  if(ev&&state.drWindow.active){
+    state.drWindow.cumulativeKwh+=instantaneousLoadKw(state)*dt;
+  }
+  if(!ev&&state.drWindow.active){
+    finalizeDrWindow();
+    state.drWindow.active=false;
+  }
+}
+function timeWeightedAvgKw(){
+  let elapsed=state.gameTime-state.drWindow.windowStartTime;
+  return elapsed>0?state.drWindow.cumulativeKwh/elapsed:instantaneousLoadKw(state);
+}
+function finalizeDrWindow(){
+  let avgKw=timeWeightedAvgKw();
+  let avgOut=state.drWindow.avgOutdoorTemp;
+  let credit=drCredit(avgKw,avgOut,state.drWindow.event.startHour);
+  state.drSavings+=credit;
+  logEvent('dr_outcome',credit>=2?'earned':credit>0?'partial':'missed',
+    {load_kw:+avgKw.toFixed(2),threshold_kw:+drThresholdKw(avgOut).toFixed(2),credit});
+}
+
+// ── COMFORT TICK — continuous rate × dt, same coefficients/exponents as before ──
+function applyComfortTick(dt){
+  let delta=Math.abs(state.setpoint-COMFORT_TEMP);
+  let rateT=delta===0?2:-0.08*Math.pow(delta,1.8);
+  state.cT=clamp0to100(state.cT+rateT*dt);
+
+  if(state.devices.hotwater){
+    if(state.hwOn){state.hwOffHours=0;state.cW=clamp0to100(state.cW+8*dt);}
+    else{state.hwOffHours+=dt;state.cW=clamp0to100(state.cW-0.05*Math.pow(state.hwOffHours,1.5)*dt);}
+  }
+
+  if(state.devices.dishwasher){
+    state.dish.overdueHoursRaw+=dt;
+    let od=Math.max(0,state.dish.overdueHoursRaw-DISH_OVERDUE_HOURS);
+    if(od>0)state.cD=clamp0to100(state.cD-0.03*Math.pow(od,1.6)*dt);
+    else state.cD=clamp0to100(state.cD+0.5*dt);
+  }
+
+  if(state.devices.laundry){
+    state.laundry.overdueHoursRaw+=dt;
+    let ol=Math.max(0,state.laundry.overdueHoursRaw-LAUNDRY_OVERDUE_HOURS);
+    if(ol>0)state.cL=clamp0to100(state.cL-0.02*Math.pow(ol,1.6)*dt);
+    else state.cL=clamp0to100(state.cL+0.5*dt);
+  }
+
+  if(state.devices.lights){
+    if(isEveningHour(state.gameTime)){
+      if(state.lightsOn){state.eveningDarkHours=0;state.cLi=clamp0to100(state.cLi+5*dt);}
+      else{state.eveningDarkHours+=dt;state.cLi=clamp0to100(state.cLi-0.4*Math.pow(state.eveningDarkHours,1.2)*dt);}
+    }else{state.eveningDarkHours=0;}
+  }
+}
+
+// ── ENERGY TICK — hvacKwh is already an instantaneous kW rate, just × dt now ──
+function hvacKwh(sp,out){return(UA*Math.abs(sp-out))/(COP*1000);}
+function instantaneousLoadKw(s){
+  let out=outdoorTempAt(s.gameTime);
+  let kw=hvacKwh(s.setpoint,out);
+  if(s.devices.hotwater&&s.hwOn)kw+=1.2;
+  if(s.devices.lights&&s.lightsOn&&isEveningHour(s.gameTime))kw+=0.5;
+  if(s.devices.dishwasher&&s.dish.running)kw+=DISH_RATED_KW;
+  if(s.devices.laundry&&s.laundry.running)kw+=LAUNDRY_RATED_KW;
+  return kw;
+}
+function applyEnergyTick(dt){
+  let out=outdoorTempAt(state.gameTime);
+  let rate=rateAt(state.gameTime),tier=tierAt(state.gameTime);
+  let hvKw=hvacKwh(state.setpoint,out);
+  state.kwhByDevice.hvac+=hvKw*dt; state.costByDevice.hvac+=hvKw*dt*rate;
+  if(state.devices.hotwater&&state.hwOn){state.kwhByDevice.hw+=1.2*dt; state.costByDevice.hw+=1.2*dt*rate;}
+  if(state.devices.lights&&state.lightsOn&&isEveningHour(state.gameTime)){state.kwhByDevice.lights+=0.5*dt; state.costByDevice.lights+=0.5*dt*rate;}
+  if(state.devices.dishwasher&&state.dish.running){state.kwhByDevice.dish+=DISH_RATED_KW*dt; state.costByDevice.dish+=DISH_RATED_KW*dt*rate;}
+  if(state.devices.laundry&&state.laundry.running){state.kwhByDevice.laundry+=LAUNDRY_RATED_KW*dt; state.costByDevice.laundry+=LAUNDRY_RATED_KW*dt*rate;}
+
+  // instantaneousLoadKw() is the single source of truth shared with the (future)
+  // live DR banner — preview and committed outcome can never drift apart
+  let totalKw=instantaneousLoadKw(state);
+  let costDelta=totalKw*dt*rate;
+  state.totalKwh+=totalKw*dt;
+  state.totalCost+=costDelta;
+  state.costByTier[tier]=(state.costByTier[tier]||0)+costDelta;
+}
+
+function updateDeviceRunStates(){
+  if(state.dish.running&&state.gameTime>=state.dish.runEndTime)state.dish.running=false;
+  if(state.laundry.running&&state.gameTime>=state.laundry.runEndTime)state.laundry.running=false;
+}
+
+const SNAPSHOT_INTERVAL_HOURS=0.25;
+function maybeLogPeriodicSnapshot(){
+  if(state.gameTime-state.lastSnapshotTime>=SNAPSHOT_INTERVAL_HOURS){
+    state.lastSnapshotTime=state.gameTime;
+    logEvent('periodic_snapshot','snapshot',{});
+  }
+}
+
+// ── MASTER TICK — the one function the live game AND the benchmarks both call ──
+function tickSimulation(dt){
+  if(state.done||state.gameOver)return;
+  state.gameTime+=dt;
+  applyComfortTick(dt);
+  applyEnergyTick(dt);
+  updateDeviceRunStates();
+  updateDrWindow(dt);
+  maybeLogPeriodicSnapshot();
+  // day-boundary detection for the end-of-day report — fires once per completed
+  // day (day 0 -> "Day 1 complete", day 1 -> "Day 2 complete"); day 2's
+  // completion is skipped since that's the final day, already covered by the
+  // end-of-study screen below.
+  let dayNow=Math.floor(state.gameTime/24);
+  if(dayNow>state.lastDayIndex){
+    if(dayNow<3){ state.dayEndPending=dayNow-1; logEvent('day_complete','day_'+(dayNow-1),{}); }
+    state.lastDayIndex=dayNow;
+  }
+  if(!state.gameOver&&composite()<40){state.gameOver=true;logEvent('game_over','comfort_below_40',{});}
+  if(!state.done&&!state.gameOver&&state.gameTime>=TOTAL_GAME_HOURS){state.done=true;logEvent('study_complete','done',{});}
+}
+
+// ── PARTICIPANT ACTIONS ───────────────────────────────────────────────────────
+// all participant actions no-op once the study is over — mirrors tickSimulation's
+// own guard, and prevents e.g. a dishwasher "start" landing right at the 72-hour
+// boundary from leaving dish.running stuck true forever with no more ticks left
+// to ever flip it back via updateDeviceRunStates()
+function setThermostat(sp){
+  if(state.done||state.gameOver)return;
+  sp=Math.max(62,Math.min(82,Math.round(sp)));
+  state.setpoint=sp;
+  logEvent('participant_adjustment','thermostat_set',{device:'thermostat'});
+}
+function toggleHotWater(on){
+  if(state.done||state.gameOver)return;
+  state.hwOn=!!on;
+  if(state.hwOn)state.hwOffHours=0;
+  logEvent('participant_adjustment','hotwater_toggle',{device:'hotwater',on:state.hwOn});
+}
+function startDishwasher(){
+  if(state.done||state.gameOver)return;
+  if(state.dish.running)return;
+  state.dish.running=true;
+  state.dish.runEndTime=state.gameTime+DISH_NOMINAL_HOURS;
+  state.dish.overdueHoursRaw=0;
+  state.cD=Math.min(100,state.cD+6);
+  logEvent('participant_adjustment','dishwasher_start',{device:'dishwasher'});
+}
+function startLaundry(){
+  if(state.done||state.gameOver)return;
+  if(state.laundry.running)return;
+  state.laundry.running=true;
+  state.laundry.runEndTime=state.gameTime+LAUNDRY_NOMINAL_HOURS;
+  state.laundry.overdueHoursRaw=0;
+  state.laundry.usedToday=true;
+  state.cL=Math.min(100,state.cL+5);
+  logEvent('participant_adjustment','laundry_start',{device:'laundry'});
+}
+function toggleLights(on){
+  if(state.done||state.gameOver)return;
+  state.lightsOn=!!on;
+  logEvent('participant_adjustment','lights_toggle',{device:'lights',on:state.lightsOn});
+}
+function setSpeed(mult){if(state.done||state.gameOver)return;state.speedMultiplier=mult;logEvent('participant_adjustment','speed_change',{mult});}
+function togglePause(){if(state.done||state.gameOver)return;state.paused=!state.paused;logEvent('participant_adjustment',state.paused?'pause':'resume',{});}
+
+// ── FIXED-TIMESTEP GAME LOOP (scaffold — Phase B/C wire this to real rendering) ──
+const SPEED_MULTIPLIERS={0:0,1:1,2:2,3:4};
+const REAL_MS_PER_GAME_HOUR_AT_1X=12500; // ~15 real min for a full 72h study at 1x
+let simAccumulatorMs=0,lastFrameMs=null;
+function frameStep(nowMs){
+  if(lastFrameMs===null)lastFrameMs=nowMs;
+  let dtMs=Math.min(nowMs-lastFrameMs,250);
+  lastFrameMs=nowMs;
+  if(!state.paused&&!state.done&&!state.gameOver){
+    simAccumulatorMs+=dtMs*SPEED_MULTIPLIERS[state.speedMultiplier];
+    let msPerStep=SIM_DT_HOURS*REAL_MS_PER_GAME_HOUR_AT_1X;
+    while(simAccumulatorMs>=msPerStep){
+      tickSimulation(SIM_DT_HOURS);
+      simAccumulatorMs-=msPerStep;
+    }
+  }
+}
+// not started yet in Phase A (nothing to render) — Phase B hooks requestAnimationFrame(frameStep) up
+
+// ── BENCHMARK SIMULATIONS ─────────────────────────────────────────────────────
+// Same swap-the-global-state-pointer-and-restore pattern the old
+// simulateBlockDecisions used — the benchmarks call the exact tick functions
+// above, never a second copy of the comfort/energy math.
+function cloneState(s){return JSON.parse(JSON.stringify(s));}
+function tickWithScratchState(sim,dt){
+  let savedState=state,savedLog=eventLog;
+  state=sim;eventLog=[];
+  tickSimulation(dt);
+  state=savedState;eventLog=savedLog;
+}
+function compositeOf(trial){let saved=state;state=trial;let c=composite();state=saved;return c;}
+
+function maxComfortPolicy(sim){
+  sim.setpoint=70;
+  if(sim.devices.hotwater)sim.hwOn=true;
+  if(sim.devices.lights)sim.lightsOn=isEveningHour(sim.gameTime);
+  if(sim.devices.dishwasher&&!sim.dish.running&&sim.dish.overdueHoursRaw>=DISH_OVERDUE_HOURS-1){
+    sim.dish.running=true;sim.dish.runEndTime=sim.gameTime+DISH_NOMINAL_HOURS;sim.dish.overdueHoursRaw=0;sim.cD=Math.min(100,sim.cD+6);
+  }
+  if(sim.devices.laundry&&!sim.laundry.running&&sim.laundry.overdueHoursRaw>=LAUNDRY_OVERDUE_HOURS-1){
+    sim.laundry.running=true;sim.laundry.runEndTime=sim.gameTime+LAUNDRY_NOMINAL_HOURS;sim.laundry.overdueHoursRaw=0;sim.laundry.usedToday=true;sim.cL=Math.min(100,sim.cL+5);
+  }
+}
+function minCostPolicy(sim){
+  const FLOOR=41;
+  function previewOutcome(patch){
+    let probe=cloneState(sim);
+    Object.assign(probe,patch);
+    for(let i=0;i<60;i++)tickWithScratchState(probe,SIM_DT_HOURS);
+    return compositeOf(probe);
+  }
+  if(sim.devices.hotwater)sim.hwOn=previewOutcome({hwOn:false})<FLOOR;
+  if(sim.devices.dishwasher&&!sim.dish.running&&sim.dish.overdueHoursRaw>0){
+    if(previewOutcome({})<FLOOR){sim.dish.running=true;sim.dish.runEndTime=sim.gameTime+DISH_NOMINAL_HOURS;sim.dish.overdueHoursRaw=0;sim.cD=Math.min(100,sim.cD+6);}
+  }
+  if(sim.devices.laundry&&!sim.laundry.running&&sim.laundry.overdueHoursRaw>0){
+    if(previewOutcome({})<FLOOR){sim.laundry.running=true;sim.laundry.runEndTime=sim.gameTime+LAUNDRY_NOMINAL_HOURS;sim.laundry.overdueHoursRaw=0;sim.laundry.usedToday=true;sim.cL=Math.min(100,sim.cL+5);}
+  }
+  if(sim.devices.lights)sim.lightsOn=false;
+  let out=outdoorTempAt(sim.gameTime);
+  let extreme=Math.max(62,Math.min(82,Math.round(out)));
+  let dir=extreme===70?0:(extreme<70?1:-1);
+  let bestSp=70,sp=extreme;
+  while(dir!==0){
+    let c=previewOutcome({setpoint:sp});
+    if(c>=FLOOR||sp===70){bestSp=sp;break;}
+    sp+=dir;
+  }
+  sim.setpoint=bestSp;
+}
+function simulateStrategy(devices,decisionPolicy){
+  let sim=cloneState(INITIAL_STATE);
+  sim.devices=Object.assign({},devices);
+  let untilNextDecision=0;
+  while(sim.gameTime<TOTAL_GAME_HOURS&&!sim.gameOver){
+    if(untilNextDecision<=0){decisionPolicy(sim);untilNextDecision=DECISION_INTERVAL_HOURS;}
+    tickWithScratchState(sim,SIM_DT_HOURS);
+    untilNextDecision-=SIM_DT_HOURS;
+  }
+  return sim;
+}
+let benchmarkResults=null;
+function computeBenchmarks(){
+  if(benchmarkResults)return benchmarkResults;
+  benchmarkResults={maxComfort:simulateStrategy(state.devices,maxComfortPolicy),minCost:simulateStrategy(state.devices,minCostPolicy)};
+  return benchmarkResults;
+}
+
+// ── COMPLETION CODE + CSV EXPORT ──────────────────────────────────────────────
+function generateCode(){
+  let netC=Math.max(0,state.totalCost-state.drSavings);
+  let thermoEvs=eventLog.filter(e=>e.value==='thermostat_set');
+  let avgSP=thermoEvs.length?Math.round(thermoEvs.reduce((s,e)=>s+e.setpoint_f,0)/thermoEvs.length):state.setpoint;
+  let lCount=eventLog.filter(e=>e.value==='laundry_start').length;
+  let dCount=eventLog.filter(e=>e.value==='dishwasher_start').length;
+  let daysOK=state.done?3:Math.min(3,Math.floor(state.gameTime/24)+1);
+  let devFlags=['thermostat','hotwater','dishwasher','laundry','lights'].map(k=>state.devices[k]?'1':'0').join('');
+  return[CONDITION==='cost'?'C':'K',SEED,daysOK,Math.round(state.totalKwh*10),Math.round(netC*100),Math.round(composite()),avgSP,lCount,dCount,Math.round(state.drSavings*100),state.gameOver?'GO':'OK',devFlags].join('-');
+}
+function buildCSV(){
+  const COLS=[
+    'participant_code','condition','seed',
+    'real_timestamp_ms','game_time_hours','day_index','hour_of_day',
+    'event_type','device','value',
+    'outdoor_temp_f','setpoint_f','tou_tier','tou_rate_per_kwh',
+    'dr_window_active','dr_event_id',
+    'comfort_composite','cT','cW','cD','cL','cLi',
+    'total_kwh_so_far','total_cost_so_far','dr_savings_so_far',
+    'hw_on','lights_on','dish_running','laundry_running',
+    'hours_since_dish','hours_since_laundry','devices_selected',
+    'speed_multiplier','paused','extra'
+  ];
+  const code=generateCode();
+  const rows=eventLog.map(e=>[
+    code,e.condition,e.seed,e.timestamp_ms,e.game_time_hours,e.day_index,e.hour_of_day,
+    e.event_type,e.device||'',e.value,
+    e.outdoor_temp_f,e.setpoint_f,e.tou_tier,e.tou_rate_per_kwh,
+    e.dr_window_active?1:0,e.dr_event_id||'',
+    e.comfort_composite,e.cT,e.cW,e.cD,e.cL,e.cLi,
+    e.total_kwh_so_far,e.total_cost_so_far,e.dr_savings_so_far,
+    e.hw_on?1:0,e.lights_on?1:0,e.dish_running?1:0,e.laundry_running?1:0,
+    e.hours_since_dish,e.hours_since_laundry,e.devices_selected,
+    e.speed_multiplier,e.paused?1:0,e.extra?JSON.stringify(e.extra):''
+  ]);
+  function cell(v){let s=String(v===null||v===undefined?'':v);if(s.includes(',')||s.includes('"')||s.includes('\n'))s='"'+s.replace(/"/g,'""')+'"';return s;}
+  return[COLS.join(','),...rows.map(r=>r.map(cell).join(','))].join('\n');
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// PHASE A SELF-TEST — scripted headless playthrough, no UI.
+// Exit criteria (per the plan): produces a plausible completion code + CSV.
+// ══════════════════════════════════════════════════════════════════════════
+function runSelfTest(){
+  // runs on a scratch clone (same swap-pointer-and-restore pattern the benchmark
+  // simulations use) so this validation pass never contaminates the shared live
+  // `state` that the interactive 3D scene (Phase B2+) reads and mutates
+  let savedState=state,savedLog=eventLog,savedBenchmarkResults=benchmarkResults;
+  state=cloneState(INITIAL_STATE);
+  eventLog=[];
+  benchmarkResults=null;
+
+  logEvent('appliances_selected',selectedDeviceKeys().join('+'),{});
+
+  function fastForward(hours){
+    let steps=Math.round(hours/SIM_DT_HOURS);
+    for(let i=0;i<steps;i++)tickSimulation(SIM_DT_HOURS);
+  }
+
+  // scripted mixed-decision playthrough across the 3-day span
+  setThermostat(74);
+  fastForward(6);
+  toggleHotWater(false);
+  fastForward(6);
+  toggleHotWater(true);
+  startDishwasher();
+  fastForward(10);
+  setThermostat(78);
+  fastForward(8);
+  toggleLights(true);
+  fastForward(4);
+  toggleLights(false);
+  startLaundry();
+  fastForward(14);
+  setThermostat(72);
+  fastForward(24);
+  startDishwasher();
+  fastForward(24);
+  // catch up to the exact end if the scripted chunks under/overshot
+  while(!state.done&&!state.gameOver)tickSimulation(SIM_DT_HOURS);
+
+  let bench=computeBenchmarks();
+  let actualComfort=Math.round(composite());
+  let actualNet=Math.max(0,state.totalCost-state.drSavings);
+  let mcC=Math.round(compositeOf(bench.maxComfort));
+  let mnC=Math.round(compositeOf(bench.minCost));
+  let mcNet=Math.max(0,bench.maxComfort.totalCost-bench.maxComfort.drSavings);
+  let mnNet=Math.max(0,bench.minCost.totalCost-bench.minCost.drSavings);
+
+  let csv=buildCSV();
+  let code=generateCode();
+  let csvLines=csv.split('\n');
+
+  let summary=[
+    'PHASE A HEADLESS SELF-TEST',
+    '==========================',
+    'Final game time: '+state.gameTime.toFixed(2)+' / '+TOTAL_GAME_HOURS+' hours',
+    'done='+state.done+'   gameOver='+state.gameOver,
+    '',
+    'Final comfort: '+scoreEmoji(actualComfort)+' '+actualComfort+'/100',
+    '  cT='+state.cT.toFixed(1)+'  cW='+state.cW.toFixed(1)+'  cD='+state.cD.toFixed(1)+'  cL='+state.cL.toFixed(1)+'  cLi='+state.cLi.toFixed(1),
+    'Total kWh: '+state.totalKwh.toFixed(2),
+    'Total cost: $'+state.totalCost.toFixed(2),
+    'DR bonus earned: $'+state.drSavings.toFixed(2),
+    'Net cost: $'+actualNet.toFixed(2),
+    'Events logged: '+eventLog.length,
+    '',
+    'BENCHMARKS (computed via the same tickSimulation() the real run used)',
+    '  Max comfort:  final='+mcC+'/100   kWh='+bench.maxComfort.totalKwh.toFixed(2)+'   net=$'+mcNet.toFixed(2),
+    '  Min cost:     final='+mnC+'/100   kWh='+bench.minCost.totalKwh.toFixed(2)+'   net=$'+mnNet.toFixed(2),
+    '  Sanity — max comfort benchmark >= actual comfort ('+actualComfort+'): '+(mcC>=actualComfort)+'  ('+mcC+' >= '+actualComfort+')',
+    '  Sanity — min cost benchmark net <= actual net ($'+actualNet.toFixed(2)+'): '+(mnNet<=actualNet+0.01)+'  ($'+mnNet.toFixed(2)+' <= $'+actualNet.toFixed(2)+')',
+    '',
+    'COMPLETION CODE: '+code,
+    '',
+    'CSV: '+csvLines.length+' total lines (1 header + '+(csvLines.length-1)+' rows). First 6 lines:',
+    csvLines.slice(0,6).join('\n'),
+  ].join('\n');
+
+  document.getElementById('output').textContent=summary;
+  console.log(summary);
+  console.log('[Home Energy Study 3D] Full CSV:\n'+csv);
+
+  // restore the live/interactive state exactly as it was before this validation ran
+  state=savedState;
+  eventLog=savedLog;
+  benchmarkResults=savedBenchmarkResults;
+}
+
+runSelfTest();
+
+// ══════════════════════════════════════════════════════════════════════════
+// START / TUTORIAL / END SCREENS — Sims-style takeover screens bookending
+// the study. `gameStarted` gates the live tick loop (checked in the module
+// script's animate()) so nothing advances — no clock, no cost — until the
+// participant has actually gone through the guided tutorial (module script,
+// wired up further down) and dismissed its own outro screen; the end screen
+// shows once, the first time state.done or state.gameOver flips true.
+// ══════════════════════════════════════════════════════════════════════════
+let gameStarted = new URLSearchParams(window.location.search).get('arrange') === '1'; // arrange mode is a dev tool, not the participant flow — skip the start screen/tutorial entirely
+let endScreenShown = false;
+if(gameStarted) document.getElementById('start-screen').style.display = 'none';
+
+document.getElementById('start-btn').addEventListener('click', ()=>{
+  document.getElementById('start-screen').style.display = 'none';
+  // the module script's own start-btn listener takes over from here and
+  // kicks off the guided tutorial — gameStarted stays false until that
+  // finishes and #tutorial-outro-btn is clicked.
+});
+
+// ── Background music — a mellow loop from the project's own bundled asset
+// pack. Starts on this button click since it's the first real user gesture
+// in the whole flow, satisfying browser autoplay-gesture requirements; kept
+// at a low volume so it stays in the background, with a HUD mute toggle
+// since forcing music on a player with no way to turn it off is bad UX.
+const bgMusic = document.getElementById('bg-music');
+bgMusic.volume = 0.35;
+document.getElementById('start-btn').addEventListener('click', ()=>{
+  bgMusic.play().catch(()=>{}); // ignore — only fails if the browser still considers this not a real user gesture
+});
+document.getElementById('btn-mute').addEventListener('click', ()=>{
+  bgMusic.muted = !bgMusic.muted;
+  document.getElementById('btn-mute').textContent = bgMusic.muted ? '🔇' : '🔊';
+});
+
+function downloadCSV(){
+  let blob = new Blob([buildCSV()], {type:'text/csv'});
+  let url = URL.createObjectURL(blob);
+  let a = document.createElement('a');
+  a.href = url; a.download = 'home-energy-study.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+document.getElementById('end-download-btn').addEventListener('click', downloadCSV);
+
+function maybeShowEndScreen(){
+  if(endScreenShown || (!state.done && !state.gameOver)) return;
+  endScreenShown = true;
+
+  let bench = computeBenchmarks();
+  let actualComfort = Math.round(composite());
+  let actualNet = Math.max(0, state.totalCost-state.drSavings);
+  let mcC = Math.round(compositeOf(bench.maxComfort));
+  let mnC = Math.round(compositeOf(bench.minCost));
+  let mcNet = Math.max(0, bench.maxComfort.totalCost-bench.maxComfort.drSavings);
+  let mnNet = Math.max(0, bench.minCost.totalCost-bench.minCost.drSavings);
+
+  document.getElementById('end-emoji').textContent = state.gameOver ? '😟' : '🎉';
+  document.getElementById('end-title').textContent = state.gameOver ? 'Comfort dropped too low' : 'Study complete!';
+  document.getElementById('end-subtitle').textContent = state.gameOver
+    ? "Your household's comfort fell below 40 before the 3 days were up."
+    : "You managed the household for all 3 days. Here's how it went.";
+
+  document.getElementById('end-stats').innerHTML = [
+    ['Total energy used', state.totalKwh.toFixed(2)+' kWh'],
+    ['Total cost', '$'+state.totalCost.toFixed(2)],
+    ['Power-saving bonus earned', '$'+state.drSavings.toFixed(2)],
+    ['Dishwasher runs', eventLog.filter(e=>e.value==='dishwasher_start').length],
+    ['Laundry runs', eventLog.filter(e=>e.value==='laundry_start').length],
+  ].map(([label,value])=>'<div class="overlay-stat-row"><span>'+label+'</span><b>'+value+'</b></div>').join('');
+
+  document.getElementById('end-benchmarks').innerHTML =
+    '<div class="benchmark-card you"><div class="bl">You</div><div class="bv">'+scoreEmoji(actualComfort)+' '+actualComfort+'</div></div>'+
+    '<div class="benchmark-card"><div class="bl">Max comfort</div><div class="bv">'+scoreEmoji(mcC)+' '+mcC+'</div></div>'+
+    '<div class="benchmark-card"><div class="bl">Min cost</div><div class="bv">'+scoreEmoji(mnC)+' '+mnC+'</div></div>'+
+    '<div class="benchmark-card you"><div class="bl">Net cost</div><div class="bv">$'+actualNet.toFixed(2)+'</div></div>'+
+    '<div class="benchmark-card"><div class="bl">Net cost</div><div class="bv">$'+mcNet.toFixed(2)+'</div></div>'+
+    '<div class="benchmark-card"><div class="bl">Net cost</div><div class="bv">$'+mnNet.toFixed(2)+'</div></div>';
+
+  document.getElementById('end-code').textContent = 'Completion code: ' + generateCode();
+  document.getElementById('end-screen').style.display = 'flex';
+}
+
+// ── End-of-day report — fires once per completed day (see the day-boundary
+// check in tickSimulation), reusing eventLog's already-recorded timestamps
+// to reconstruct "what was on, when, at what price" without any new
+// per-day state tracking. ──
+function fmtHourOfDay(absHour){
+  let hod = ((absHour%24)+24)%24;
+  let h = Math.floor(hod), m = Math.round((hod-h)*60);
+  if(m===60){ m=0; h+=1; }
+  let ampm = h>=12?'PM':'AM';
+  let h12 = h%12; if(h12===0) h12=12;
+  return h12+':'+String(m).padStart(2,'0')+' '+ampm;
+}
+// reconstructs on/off intervals for a toggle-style device (hot water, lights)
+// from its logged toggle events — walks the whole log (not just this day) to
+// find the state carrying into the day's start, then the day's own toggles.
+function reconstructDaySegments(dayIndex, valueMatch, onField, initialOnDefault){
+  let dayStart=dayIndex*24, dayEnd=dayStart+24;
+  let all = eventLog.filter(e=>e.value===valueMatch).sort((a,b)=>a.game_time_hours-b.game_time_hours);
+  let prior = all.filter(e=>e.game_time_hours<dayStart);
+  let isOn = prior.length ? prior[prior.length-1][onField] : initialOnDefault;
+  let dayEvents = all.filter(e=>e.game_time_hours>=dayStart && e.game_time_hours<dayEnd);
+  let segments=[], segStart = isOn?dayStart:null;
+  for(let e of dayEvents){
+    let on = e[onField];
+    if(on && !isOn) segStart = e.game_time_hours;
+    else if(!on && isOn){ segments.push([segStart, e.game_time_hours]); segStart=null; }
+    isOn = on;
+  }
+  if(isOn) segments.push([segStart, dayEnd]);
+  return segments;
+}
+// dishwasher/laundry only log a "start" event — the run's own known nominal
+// duration gives us the segment's end (clipped to the day's own 24h window).
+function reconstructDayRuns(dayIndex, valueMatch, durationHours){
+  let dayStart=dayIndex*24, dayEnd=dayStart+24;
+  return eventLog.filter(e=>e.value===valueMatch && e.game_time_hours>=dayStart && e.game_time_hours<dayEnd)
+    .map(e=>[e.game_time_hours, Math.min(e.game_time_hours+durationHours, dayEnd)]);
+}
+const DAY_END_ROWS = [
+  { label:'🌡️ Thermostat', type:'ticks' },
+  { label:'🚿 Hot Water', type:'segments', onField:'hw_on', valueMatch:'hotwater_toggle', initialOn:true },
+  { label:'🍽️ Dishwasher', type:'runs', valueMatch:'dishwasher_start', duration:DISH_NOMINAL_HOURS },
+  { label:'👕 Laundry', type:'runs', valueMatch:'laundry_start', duration:LAUNDRY_NOMINAL_HOURS },
+  { label:'💡 Lights', type:'segments', onField:'lights_on', valueMatch:'lights_toggle', initialOn:false },
+];
+function renderDayEndTimeline(dayIndex){
+  let dayStart = dayIndex*24;
+  let tierBg = TOU_TIER_24.map(tier=>'<div class="dt-hour" style="background:'+TOU_TIER_COLOR[tier]+'"></div>').join('');
+  let html = '';
+  for(let row of DAY_END_ROWS){
+    html += '<div class="dt-row"><div class="dt-row-label">'+row.label+'</div><div class="dt-bar">'+tierBg;
+    if(row.type==='ticks'){
+      let events = eventLog.filter(e=>e.value==='thermostat_set' && e.game_time_hours>=dayStart && e.game_time_hours<dayStart+24);
+      html += events.map(e=>'<div class="dt-tick" style="left:'+(((e.game_time_hours-dayStart)/24)*100)+'%"></div>').join('');
+      html += '</div>';
+      html += events.length
+        ? '<div class="dt-intervals">'+events.map(e=>fmtHourOfDay(e.game_time_hours)+' — set to <b>'+e.setpoint_f+'°F</b>').join('<br>')+'</div>'
+        : '<div class="dt-intervals">Not adjusted today.</div>';
+    } else {
+      let segments = (row.type==='segments'
+        ? reconstructDaySegments(dayIndex, row.valueMatch, row.onField, row.initialOn)
+        : reconstructDayRuns(dayIndex, row.valueMatch, row.duration)
+      ).filter(([s,e])=>(e-s)>0.001); // drop zero-length segments (e.g. a toggle-off at the exact instant the day starts)
+      html += segments.map(([s,e])=>{
+        let leftPct=((s-dayStart)/24)*100, widthPct=((e-s)/24)*100;
+        return '<div class="dt-seg" style="left:'+leftPct+'%;width:'+widthPct+'%"></div>';
+      }).join('');
+      html += '</div>';
+      html += segments.length
+        ? '<div class="dt-intervals">'+segments.map(([s,e])=>fmtHourOfDay(s)+'–'+(e>=dayStart+24?'end of day':fmtHourOfDay(e))+' · <b>'+TOU_LEGEND_LABEL[tierAt(s)]+'</b>').join('<br>')+'</div>'
+        : '<div class="dt-intervals">Not used today.</div>';
+    }
+    html += '</div>';
+  }
+  document.getElementById('day-end-timeline').innerHTML = html;
+}
+let dayEndScreenShownFor = null; // guards against re-showing every frame while the overlay (and thus state.paused) is up
+function maybeShowDayEndScreen(){
+  if(state.dayEndPending===null || dayEndScreenShownFor===state.dayEndPending) return;
+  dayEndScreenShownFor = state.dayEndPending;
+  state.paused = true;
+  window.updateSpeedButtons(0);
+  let dayIndex = state.dayEndPending;
+  document.getElementById('day-end-title').textContent = 'Day '+(dayIndex+1)+' complete';
+  let comfortNow = Math.round(composite());
+  document.getElementById('day-end-stats').innerHTML = [
+    ['Cost so far', '$'+state.totalCost.toFixed(2)],
+    ['Comfort now', scoreEmoji(comfortNow)+' '+comfortNow+'/100'],
+  ].map(([label,value])=>'<div class="overlay-stat-row"><span>'+label+'</span><b>'+value+'</b></div>').join('');
+  renderDayEndTimeline(dayIndex);
+  document.getElementById('day-end-continue-btn').textContent = 'Continue to Day '+(dayIndex+2)+' →';
+  document.getElementById('day-end-screen').style.display = 'flex';
+}
+document.getElementById('day-end-continue-btn').addEventListener('click', ()=>{
+  document.getElementById('day-end-screen').style.display = 'none';
+  state.paused = false;
+  state.dayEndPending = null;
+  window.updateSpeedButtons(state.speedMultiplier);
+});
+</script>
+
+<script type="module">
+// ══════════════════════════════════════════════════════════════════════════
+// PHASE C — modular house shell (PSX modular pack) + real furniture/appliance
+// models (PSX pack + one FBX dishwasher) + an animated rabbit avatar.
+// Replaces the primitive-geometry B1/B2 house with real modeled assets, on a
+// 4x4-unit grid matching the modular kit's native scale. Loaded from a CDN
+// via the importmap in <head>, zero build step. Local model files are served
+// from /3D Models/ alongside this file.
+// ══════════════════════════════════════════════════════════════════════════
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+const statusEl = document.getElementById('scene-status');
+
+if(!window.WebGLRenderingContext){
+  statusEl.textContent = 'WebGL not supported in this browser — 3D room cannot render.';
+} else {
+  initScene().catch(err=>{
+    statusEl.textContent = 'Failed to initialize 3D scene: ' + err.message;
+    console.error(err);
+  });
+}
+
+async function initScene(){
+  const container = document.getElementById('scene-container');
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0f1e);
+
+  const camera = new THREE.PerspectiveCamera(45, container.clientWidth/container.clientHeight, 0.1, 100);
+  camera.position.set(9, 21, 10); // steep-ish overhead angle so the 4-room grid reads without orbiting
+
+  const renderer = new THREE.WebGLRenderer({ antialias:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // perf guardrail
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  container.appendChild(renderer.domElement);
+
+  // CSS2D layer for room-name labels, layered over the WebGL canvas
+  const labelRenderer = new CSS2DRenderer();
+  labelRenderer.setSize(container.clientWidth, container.clientHeight);
+  const css2dLayer = document.getElementById('css2d-layer');
+  css2dLayer.appendChild(labelRenderer.domElement);
+  labelRenderer.domElement.style.position = 'absolute';
+  labelRenderer.domElement.style.top = '0';
+
+  statusEl.textContent = 'loading house + furniture…';
+
+  // ── Asset loading infrastructure ─────────────────────────────────────────
+  const PSX_BASE = '/3D Models/PSX modular house interior pack/';
+  const FURNITURE_BASE = '/3D Models/Low Poly Furniture/';
+  const MODELS_BASE = '/3D Models/';
+
+  const draco = new DRACOLoader();
+  draco.setDecoderPath('https://unpkg.com/three@0.185.1/examples/jsm/libs/draco/');
+  const gltfLoader = new GLTFLoader();
+  gltfLoader.setDRACOLoader(draco);
+  const fbxLoader = new FBXLoader();
+
+  // cache the loaded template per unique geometry/prop file — every placement
+  // clones the cached template rather than re-fetching/re-parsing the same
+  // small GLB dozens of times (e.g. wallPlaster.glb is reused ~10x)
+  const geomCache = {}, propCache = {};
+  async function loadGeom(name){
+    if(!geomCache[name]) geomCache[name] = gltfLoader.loadAsync(PSX_BASE+'geometry/'+name+'.glb').then(g=>g.scene);
+    return (await geomCache[name]).clone();
+  }
+  async function loadProp(name){
+    if(!propCache[name]) propCache[name] = gltfLoader.loadAsync(PSX_BASE+'props/'+name+'.glb').then(g=>g.scene);
+    return (await propCache[name]).clone();
+  }
+  function tagShadows(obj){ obj.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } }); }
+
+  // loads one item from either catalog, given a {source, file} descriptor —
+  // shared by the arrange-mode picker AND by applySavedLayout (which needs to
+  // recreate previously-spawned custom pieces in BOTH modes, not just arrange
+  // mode, so a saved layout's new furniture actually shows up in the real game)
+  async function loadCatalogItem(spawn){
+    if(spawn.source === 'psx') return await loadProp(spawn.file);
+    let obj = await fbxLoader.loadAsync(encodeURI(FURNITURE_BASE + spawn.file + '.fbx')); // encodeURI for filenames with spaces (e.g. "Toilet Roll Holder.fbx")
+    // Low Poly Furniture FBX files have no verified consistent scale
+    // convention (Dishwasher/Desk each needed a different empirically-tuned
+    // factor) — auto-correct only if the raw load is a wildly implausible
+    // size for furniture, rather than trusting an unverified per-file scale
+    let box = new THREE.Box3().setFromObject(obj);
+    let size = box.getSize(new THREE.Vector3());
+    let maxDim = Math.max(size.x, size.y, size.z);
+    if(maxDim > 15 || maxDim < 0.05) obj.scale.setScalar(1/maxDim);
+    return obj;
+  }
+
+  // ── Arrange mode (?arrange=1) — a dev-only layout editor, not part of the
+  // real participant-facing game. Click-drag any registered piece (furniture
+  // OR appliance) to reposition it on the floor, scroll wheel while it's
+  // selected to rotate it, then Save. `placeables` is always populated
+  // (every piece, in every mode) so a saved layout can be re-applied on top
+  // of the hardcoded defaults even outside arrange mode; only the draggable
+  // raycast target list is arrange-mode-only.
+  const ARRANGE_MODE = new URLSearchParams(location.search).get('arrange') === '1';
+  const LAYOUT_STORAGE_KEY = 'homeEnergyStudy3d_layout_v1';
+  const placeables = {}; // id -> obj, always populated
+  const arrangeMeshes = []; // draggable raycast targets, only populated in arrange mode
+  function registerArrangeable(id, obj, wallMounted){
+    placeables[id] = obj;
+    // the base scale each item already loads at (some are non-uniform, e.g.
+    // the wall-mounted TV) — rescaling in arrange mode multiplies a factor
+    // on top of this rather than overwriting scale outright, so an item's
+    // own proportions/pre-tuned size are preserved as it's resized.
+    obj.userData.baseScale = obj.scale.clone();
+    obj.userData.scaleFactor = 1;
+    // wall-mounted pieces (paintings, thermostat, mirror, windows) only ever
+    // slide along the wall they're already flush against — dragging them
+    // like floor furniture (free XZ, following the ground-plane raycast)
+    // let them get pulled right through the wall onto its outer/outside
+    // face, since nothing constrained the axis running INTO the wall.
+    obj.userData.wallMounted = !!wallMounted;
+    if(ARRANGE_MODE){
+      obj.traverse(o=>{ if(o.isMesh){ o.userData.arrangeId = id; arrangeMeshes.push(o); } });
+    }
+  }
+  async function applySavedLayout(){
+    let raw = localStorage.getItem(LAYOUT_STORAGE_KEY);
+    if(!raw) return;
+    try{
+      let layout = JSON.parse(raw);
+      for(const [id, t] of Object.entries(layout)){
+        let obj = placeables[id];
+        if(!obj && t.spawn){
+          // a piece added via the arrange-mode picker, not one of the
+          // hardcoded defaults — recreate it (in BOTH modes) before
+          // positioning it, since it doesn't exist yet otherwise
+          obj = await loadCatalogItem(t.spawn);
+          tagShadows(obj);
+          obj.userData.spawn = t.spawn;
+          scene.add(obj);
+          registerArrangeable(id, obj);
+        }
+        if(obj){
+          obj.position.x = t.x; obj.position.z = t.z; obj.rotation.y = t.rotY;
+          if(t.scale){ obj.userData.scaleFactor = t.scale; obj.scale.copy(obj.userData.baseScale).multiplyScalar(t.scale); }
+        }
+      }
+    } catch(err){ console.error('[Arrange Mode] failed to apply saved layout', err); }
+  }
+  // snaps an angle to the nearest 45° step — 0/90/180/270 line up with the
+  // wall directions (FACE.north/south/east/west), and 45/135/225/315 fill in
+  // the diagonals, so everything (hardcoded or hand-arranged) stays on the
+  // same rotational grid instead of landing at an arbitrary angle
+  const STEP_45 = Math.PI/4;
+  function snapTo45(angle){ return Math.round(angle/STEP_45)*STEP_45; }
+  // orients a freestanding piece of furniture/appliance to face the center of
+  // its own room, instead of whatever arbitrary default orientation it loaded
+  // with — assumes the model's local +Z is its "front", matching the same
+  // convention already used for the wall pieces and the avatar
+  function faceRoomCenter(obj, roomId){
+    let room = ROOMS[roomId];
+    let cx = (room.xMin+room.xMax)/2, cz = (room.zMin+room.zMax)/2;
+    obj.rotation.y = snapTo45(Math.atan2(cx-obj.position.x, cz-obj.position.z));
+  }
+
+  // ── House shell: 4x4-unit modular grid, matching the PSX pack's native
+  // wall/floor/ceiling scale exactly (wallWood.glb etc. are all 4 wide, 4
+  // tall) — 2x2 rooms, 8x8 units each, 16x16 total. Dollhouse-cutaway style:
+  // only North + West exterior walls are built (open framing on South/East,
+  // camera clamped so the missing walls are never seen from behind); no
+  // ceiling pieces at all, since the camera looks down INTO the rooms.
+  // ══════════════════════════════════════════════════════════════════════
+  const G = 4; // grid unit, matches the modular kit's native tile size
+  const WALL_H = 4;
+  const HOUSE_MIN_X = -8, HOUSE_MAX_X = 8, HOUSE_MIN_Z = -8, HOUSE_MAX_Z = 8;
+
+  // Yard — a plain ground plane well past the house footprint. Walls alone
+  // don't reliably read as a boundary: from the steep default overhead angle
+  // a vertical wall is nearly edge-on (just a thin line), and the dynamic
+  // cutaway hides/fades whichever wall the camera is looking toward anyway —
+  // so right at a doorway there was often nothing on screen distinguishing
+  // "inside" from "outside", which made the rabbit look like it could (and
+  // did, visually) just walk off into empty space. A ground-color change
+  // outside the walls makes that boundary obvious from every camera angle,
+  // independent of any wall's visibility state.
+  // procedural grass texture — a small tileable canvas of speckled green
+  // blades, repeated across the yard. No grass texture ships in either asset
+  // pack, and this avoids a download for something a flat color already
+  // mostly solves; can be swapped for a real texture pack later if wanted.
+  function makeGrassTexture(){
+    let c = document.createElement('canvas');
+    c.width = c.height = 128;
+    let ctx = c.getContext('2d');
+    ctx.fillStyle = '#2f5233';
+    ctx.fillRect(0, 0, 128, 128);
+    for(let i=0;i<900;i++){
+      let x = Math.random()*128, y = Math.random()*128;
+      let shade = 20 + Math.random()*40;
+      ctx.strokeStyle = `rgb(${40+shade*0.4},${80+shade},${40+shade*0.3})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + (Math.random()*3-1.5), y - 3 - Math.random()*4);
+      ctx.stroke();
+    }
+    let tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(16, 16);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+  const yard = new THREE.Mesh(
+    new THREE.PlaneGeometry(64, 64),
+    new THREE.MeshLambertMaterial({ map: makeGrassTexture() })
+  );
+  yard.rotation.x = -Math.PI/2;
+  yard.position.y = -0.03;
+  yard.receiveShadow = true;
+  scene.add(yard);
+
+  // room definitions: quadrant bounds + this room's own wall/floor finish
+  const ROOMS = {
+    bedroom:    { xMin:-8, xMax:0, zMin:-8, zMax:0, wallMat:'Wallpaper', floorMat:'Wood',  label:'Bedroom' },
+    livingroom: { xMin:0,  xMax:8, zMin:-8, zMax:0, wallMat:'Plaster',   floorMat:'Wood',  label:'Living Room' },
+    kitchen:    { xMin:-8, xMax:0, zMin:0,  zMax:8, wallMat:'Plaster',   floorMat:'Marble', label:'Kitchen' },
+    bathroom:   { xMin:0,  xMax:8, zMin:0,  zMax:8, wallMat:'Tiles',     floorMat:'Tiles', label:'Bathroom' },
+  };
+  const floorMeshes = []; // collected for the avatar's click-to-move raycasting below
+  // every wall (interior AND exterior) that was given a facing normal gets
+  // registered here for dynamic dollhouse-cutaway visibility: whichever walls
+  // are on the camera's near side (their normal roughly points at the camera)
+  // fade out, so every room — including ones behind an interior divider —
+  // stays visible from every orbit angle. isHouseExterior distinguishes the
+  // true outer boundary walls (which fade to a faint outline instead of
+  // vanishing — see updateWallVisibility) from interior dividers (which can
+  // vanish completely, since there's no "outside" on the other side of those).
+  const dynamicWalls = [];
+
+  async function placeWallCell(cellCenterX, cellCenterZ, rotY, kind, mat, outwardNormal, isHouseExterior){
+    let obj = await loadGeom(kind+mat);
+    obj.position.set(cellCenterX, 0, cellCenterZ);
+    obj.rotation.y = rotY;
+    tagShadows(obj);
+    if(isHouseExterior){
+      // give this instance its own material (loadGeom's cache clones the
+      // Object3D but not its materials, so without this every wall sharing
+      // the same finish would fade together) so its opacity can be animated
+      // independently as the camera orbits.
+      obj.traverse(o=>{ if(o.isMesh && o.material){ o.material = o.material.clone(); o.material.transparent = true; } });
+      // matching roof-line cap along the top of every true exterior wall —
+      // the pack only ships cap trim in Wood/Concrete/Metal (not per the
+      // wallpaper/plaster/tile finishes used inside), so one consistent Wood
+      // trim runs the whole roofline rather than trying to match each room.
+      // Unlike the wall panel itself, this cap piece renders AT its own
+      // placement origin with no extra offset (confirmed empirically), so it
+      // needs the wall's actual (offset) world position, not the cell-center
+      // input the wall panel itself was given.
+      let capX = cellCenterX + 2*Math.sin(rotY), capZ = cellCenterZ + 2*Math.cos(rotY);
+      let cap = await loadGeom('capRoofWallWood');
+      cap.position.set(capX, WALL_H, capZ);
+      cap.rotation.y = rotY;
+      tagShadows(cap);
+      scene.add(cap);
+    }
+    scene.add(obj);
+    if(outwardNormal) dynamicWalls.push({ mesh:obj, normal:outwardNormal, isHouseExterior:!!isHouseExterior });
+  }
+  async function placeFloorCell(cellCenterX, cellCenterZ, mat){
+    let obj = await loadGeom('floor'+mat);
+    obj.position.set(cellCenterX, 0, cellCenterZ);
+    tagShadows(obj);
+    obj.traverse(o=>{ if(o.isMesh) floorMeshes.push(o); });
+    scene.add(obj);
+  }
+
+  // rotY convention (matches the pack's own default orientation, empirically
+  // confirmed): 0 -> wall faces +Z, PI/2 -> faces +X, PI -> faces -Z, -PI/2 -> faces -X
+  const FACE = { north:Math.PI, south:0, east:Math.PI/2, west:-Math.PI/2 };
+  // matching outward-facing normals, for the dynamic wall-visibility test below
+  const NORMAL = {
+    north: new THREE.Vector3(0,0,-1), south: new THREE.Vector3(0,0,1),
+    east: new THREE.Vector3(1,0,0), west: new THREE.Vector3(-1,0,0),
+  };
+
+  const roomBuildPromises = [];
+  for(const [id, room] of Object.entries(ROOMS)){
+    const cellsX = (room.xMax-room.xMin)/G, cellsZ = (room.zMax-room.zMin)/G;
+    for(let ix=0; ix<cellsX; ix++){
+      for(let iz=0; iz<cellsZ; iz++){
+        const cx = room.xMin + ix*G + G/2, cz = room.zMin + iz*G + G/2;
+        roomBuildPromises.push(placeFloorCell(cx, cz, room.floorMat));
+
+        // exterior North wall — only this house's northernmost row (z===HOUSE_MIN_Z)
+        if(room.zMin===HOUSE_MIN_Z && iz===0){
+          roomBuildPromises.push(placeWallCell(cx, cz, FACE.north, 'wall', room.wallMat, NORMAL.north, true));
+        }
+        // exterior West wall — only this house's westernmost column (x===HOUSE_MIN_X)
+        if(room.xMin===HOUSE_MIN_X && ix===0){
+          roomBuildPromises.push(placeWallCell(cx, cz, FACE.west, 'wall', room.wallMat, NORMAL.west, true));
+        }
+      }
+    }
+    // room label
+    let labelDiv = document.createElement('div');
+    labelDiv.className = 'room-label';
+    labelDiv.textContent = room.label;
+    let label = new CSS2DObject(labelDiv);
+    label.position.set((room.xMin+room.xMax)/2, 0.05, room.zMin+0.6);
+    scene.add(label);
+  }
+  // South exterior wall (z=HOUSE_MAX_Z) — Kitchen's + Bathroom's southernmost
+  // cell row. One wallDoor as a back exit (Bathroom side).
+  roomBuildPromises.push(placeWallCell(-6, 6, FACE.south, 'wall', ROOMS.kitchen.wallMat, NORMAL.south, true));
+  roomBuildPromises.push(placeWallCell(-2, 6, FACE.south, 'wall', ROOMS.kitchen.wallMat, NORMAL.south, true));
+  roomBuildPromises.push(placeWallCell(2, 6, FACE.south, 'wallDoor', ROOMS.bathroom.wallMat, NORMAL.south, true));
+  roomBuildPromises.push(placeWallCell(6, 6, FACE.south, 'wall', ROOMS.bathroom.wallMat, NORMAL.south, true));
+  // East exterior wall (x=HOUSE_MAX_X) — LivingRoom's + Bathroom's eastmost
+  // cell column. One wallDoor as the front entrance (LivingRoom side).
+  roomBuildPromises.push(placeWallCell(6, -6, FACE.east, 'wall', ROOMS.livingroom.wallMat, NORMAL.east, true));
+  roomBuildPromises.push(placeWallCell(6, -2, FACE.east, 'wallDoor', ROOMS.livingroom.wallMat, NORMAL.east, true));
+  roomBuildPromises.push(placeWallCell(6, 2, FACE.east, 'wall', ROOMS.bathroom.wallMat, NORMAL.east, true));
+  roomBuildPromises.push(placeWallCell(6, 6, FACE.east, 'wall', ROOMS.bathroom.wallMat, NORMAL.east, true));
+
+  // interior dividing walls, one doorway cell per boundary, plain wall in the
+  // other cell(s) — divider material is a neutral Plaster throughout (a
+  // single wall can only carry one texture, so interior walls don't try to
+  // match both adjoining rooms' finishes).
+  //
+  // IMPORTANT: each wall piece's own flat panel sits ~2 units off its local
+  // origin along its (rotated) +Z axis, not AT the origin — so to land a wall
+  // exactly on a boundary line, the origin must be placed at the adjacent
+  // CELL'S CENTER (2 units back from the line), never on the line itself.
+  // x=0 wall (Bedroom|LivingRoom north half, Kitchen|Bathroom south half) —
+  // built from the west room's (Bedroom/Kitchen) easternmost cell column,
+  // facing east so the panel lands exactly on x=0.
+  roomBuildPromises.push(placeWallCell(-2, -6, FACE.east, 'wall', 'Plaster', NORMAL.east));      // Bedroom|LivingRoom, plain
+  roomBuildPromises.push(placeWallCell(-2, -2, FACE.east, 'wallDoor', 'Plaster', NORMAL.east));  // Bedroom|LivingRoom, door
+  roomBuildPromises.push(placeWallCell(-2, 2, FACE.east, 'wallDoor', 'Plaster', NORMAL.east));   // Kitchen|Bathroom, door
+  roomBuildPromises.push(placeWallCell(-2, 6, FACE.east, 'wall', 'Plaster', NORMAL.east));       // Kitchen|Bathroom, plain
+  // z=0 wall (Bedroom|Kitchen west half, LivingRoom|Bathroom east half) —
+  // built from the north room's (Bedroom/LivingRoom) southernmost cell row,
+  // facing south so the panel lands exactly on z=0.
+  roomBuildPromises.push(placeWallCell(-6, -2, FACE.south, 'wall', 'Plaster', NORMAL.south));     // Bedroom|Kitchen, plain
+  roomBuildPromises.push(placeWallCell(-2, -2, FACE.south, 'wallDoor', 'Plaster', NORMAL.south)); // Bedroom|Kitchen, door
+  roomBuildPromises.push(placeWallCell(2, -2, FACE.south, 'wallDoor', 'Plaster', NORMAL.south));  // LivingRoom|Bathroom, door
+  roomBuildPromises.push(placeWallCell(6, -2, FACE.south, 'wall', 'Plaster', NORMAL.south));      // LivingRoom|Bathroom, plain
+
+  await Promise.all(roomBuildPromises);
+
+  // ── Windows: real window-unit props (framed, glazed) mounted flush against
+  // a wall — not a cutout in the wall itself. A window is furniture here, the
+  // same way a painting or mirror is: it can be picked up and moved to any
+  // other spot along a wall in arrange mode, it just doesn't open a walkable
+  // gap the way an actual door does.
+  //
+  // Placement math: like every prop in this pack, the model's own origin
+  // sits offset from its visual center along its local (rotated) axes —
+  // empirically measured here as +1.9 along local Z and +2.03 along Y (this
+  // asset is tall and meant to be mounted above floor level, unlike a door
+  // which stands ON the floor with no Y offset). Solved for the origin that
+  // lands the actual window at the given wall-flush (targetX/targetY/targetZ).
+  async function placeWindow(id, targetX, targetY, targetZ, rotY, file){
+    let win = await loadGeom(file);
+    win.position.set(targetX - 1.9*Math.sin(rotY), targetY - 2.03, targetZ - 1.9*Math.cos(rotY));
+    win.rotation.y = rotY;
+    tagShadows(win);
+    scene.add(win);
+    registerArrangeable(id, win, true);
+    // this model's local-Z/Y offset from its own origin (see above) — the
+    // arrange-mode rotate handler reads this to keep the visual window
+    // pinned in place across a rotation, instead of the origin's fixed
+    // offset getting reinterpreted in a new direction and the visible mesh
+    // jumping away from wherever it actually is.
+    win.userData.mountOffset = { y: 2.03, z: 1.9 };
+  }
+  await placeWindow('bedroom_window', -6, 2.0, -8+0.15, FACE.south, 'WindowWood');   // bedroom, north wall
+  await placeWindow('living_window', 2, 2.0, -8+0.15, FACE.south, 'WindowWood');     // living room, north wall
+  await placeWindow('kitchen_window', -8+0.15, 2.0, 2, FACE.east, 'WindowWood2');    // kitchen, west wall
+  await placeWindow('bathroom_window', 8-0.15, 2.0, 2, FACE.west, 'windowWood3');    // bathroom, east wall
+
+  // ── Entrance doors: a real door prop propped open beside each exterior
+  // doorway (front entrance + back exit), instead of leaving the wallDoor
+  // cutout as a bare hole. Swung ~90° off the wall so it never sits back in
+  // the walkable gap itself (which would look like a closed door blocking a
+  // path the rabbit can actually still walk through). Draggable along the
+  // wall like any other wall-mounted piece, but the walkable gap in the wall
+  // itself stays fixed — moving the actual passage would need to rebuild the
+  // wall panels and the avatar's pathfinding waypoints, out of scope here.
+  async function placeDoor(id, targetX, targetZ, rotY){
+    let door = await loadGeom('doorWood');
+    // same render-time offset every piece in this pack has along its own
+    // rotated +Z — solved for the origin that lands the actual door at
+    // (targetX, targetZ) instead of the other way around.
+    door.position.set(targetX - 2*Math.sin(rotY), 0, targetZ - 2*Math.cos(rotY));
+    door.rotation.y = rotY;
+    tagShadows(door);
+    scene.add(door);
+    registerArrangeable(id, door, true);
+    door.userData.mountOffset = { y: 0, z: 2 }; // see placeWindow's comment on mountOffset
+  }
+  await placeDoor('front_door', 7.1, -4, 0);          // front entrance, swung open into the living room
+  await placeDoor('back_door', 0, 7.1, Math.PI/2);    // back exit, swung open into the bathroom
+
+  // ── Furniture + appliances ────────────────────────────────────────────────
+  // Interactive appliances get userData.applianceId (read by the B2 raycaster
+  // below); everything else is pure set-dressing loaded the same way but left
+  // untagged, so it can never intercept an appliance-click or a floor-move
+  // click (only tagged/floor meshes are ever added to the raycast target arrays).
+  const appliances = {};
+  const applianceMeshes = [];
+
+  function tagAppliance(obj, id){
+    obj.userData.applianceId = id;
+    obj.traverse(o=>{ if(o.isMesh){ o.userData.applianceId = id; applianceMeshes.push(o); } });
+    appliances[id] = obj;
+  }
+
+  // simple primitives for the two schematic/utility appliances that don't
+  // have a natural modeled equivalent in either pack — small wall/utility
+  // objects, not worth sourcing a dedicated model for
+  function makeThermostat(){
+    let g = new THREE.Group();
+    let plate = new THREE.Mesh(new THREE.BoxGeometry(0.9,0.9,0.15), new THREE.MeshLambertMaterial({color:0x1e3a8a}));
+    let dial = new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,0.12,24), new THREE.MeshLambertMaterial({color:0xffffff}));
+    dial.rotation.x = Math.PI/2; dial.position.z = 0.12;
+    g.add(plate, dial);
+    return g;
+  }
+  function makeHotWaterTank(){
+    let g = new THREE.Group();
+    let tank = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,1.6,20), new THREE.MeshLambertMaterial({color:0x1e3a8a}));
+    tank.position.y = 0.8;
+    g.add(tank);
+    return g;
+  }
+  // standing floor lamp (not ceiling-hung — there's no ceiling geometry for
+  // the camera to look through, so anything "hanging" would have nothing to
+  // hang from) — same cone-shade + bulb look as before, on a pole+base
+  function makeStandingLamp(){
+    let g = new THREE.Group();
+    let base = new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.26,0.08,16), new THREE.MeshLambertMaterial({color:0x2a2118}));
+    base.position.y = 0.04;
+    let pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,1.5,10), new THREE.MeshLambertMaterial({color:0x2a2118}));
+    pole.position.y = 0.79;
+    let shade = new THREE.Mesh(new THREE.ConeGeometry(0.35,0.4,16,1,true), new THREE.MeshLambertMaterial({color:0x713f12, side:THREE.DoubleSide}));
+    shade.position.y = 1.6;
+    let bulb = new THREE.Mesh(new THREE.SphereGeometry(0.14,16,16), new THREE.MeshLambertMaterial({color:0xffe8a3, emissive:0x000000, emissiveIntensity:0}));
+    bulb.position.y = 1.45;
+    g.add(base, pole, shade, bulb);
+    return g;
+  }
+
+  // Bedroom: bed + lamp (decor only, no interactive appliance lives here)
+  async function buildBedroom(){
+    let bed = await loadProp('bed');
+    bed.position.set(-6.3, 0, -6);
+    faceRoomCenter(bed, 'bedroom');
+    tagShadows(bed);
+    scene.add(bed);
+    registerArrangeable('bed', bed);
+
+    let lamp = await loadProp('tableLamp');
+    lamp.position.set(-4.4, 0, -6.8);
+    tagShadows(lamp);
+    scene.add(lamp);
+    registerArrangeable('bedroom_lamp', lamp);
+
+    let plant = await loadProp('plant2');
+    plant.position.set(-6.5, 0, -1.3);
+    tagShadows(plant); scene.add(plant);
+    registerArrangeable('bedroom_plant', plant);
+
+    let painting = await loadProp('painting3');
+    painting.position.set(-3.5, 1.7, -7.75);
+    painting.rotation.y = FACE.south; // flush against the north wall, facing into the room
+    tagShadows(painting); scene.add(painting);
+    registerArrangeable('bedroom_painting', painting, true);
+
+    // work desk — the one Low Poly Furniture pack has that the PSX pack doesn't
+    let desk = await fbxLoader.loadAsync(FURNITURE_BASE+'Tables/Desk.fbx');
+    desk.scale.setScalar(0.002); // same pack/convention as Dishwasher.fbx — verified empirically below
+    desk.position.set(-1.8, 0, -4);
+    faceRoomCenter(desk, 'bedroom');
+    tagShadows(desk);
+    scene.add(desk);
+    registerArrangeable('desk', desk);
+  }
+
+  // Living Room: thermostat + standing lamp (interactive primitives) + sofa/table/TV (decor)
+  async function buildLivingRoom(){
+    let thermo = makeThermostat();
+    thermo.position.set(6, 1.1, -7.85);
+    thermo.rotation.y = FACE.south; // flush against the north wall
+    tagAppliance(thermo, 'thermostat');
+    tagShadows(thermo);
+    scene.add(thermo);
+    registerArrangeable('thermostat', thermo, true);
+
+    let lamp = makeStandingLamp();
+    lamp.position.set(7, 0, -1);
+    tagAppliance(lamp, 'lights');
+    tagShadows(lamp);
+    scene.add(lamp);
+    registerArrangeable('lights', lamp);
+
+    let couch = await loadProp('couchBig');
+    couch.position.set(3, 0, -4);
+    faceRoomCenter(couch, 'livingroom');
+    tagShadows(couch); scene.add(couch);
+    registerArrangeable('couch', couch);
+
+    let table = await loadProp('table');
+    table.position.set(3, 0, -5.6);
+    tagShadows(table); scene.add(table);
+    registerArrangeable('coffee_table', table);
+
+    // large wall-mounted TV, facing the couch — scaled up (wide + tall, not
+    // deeper) so it actually reads as a proper flatscreen in this main room
+    let tv = await loadProp('tv');
+    tv.scale.set(2.4, 1.9, 1.1);
+    tv.position.set(3, 1.0, -7.7);
+    tv.rotation.y = FACE.south;
+    tagShadows(tv); scene.add(tv);
+    registerArrangeable('tv', tv, true);
+
+    let rug = await loadProp('carpet2');
+    rug.position.set(3, 0.01, -4.5);
+    tagShadows(rug); scene.add(rug);
+    registerArrangeable('rug', rug);
+
+    let painting = await loadProp('painting');
+    painting.position.set(5.5, 1.7, -7.75);
+    painting.rotation.y = FACE.south;
+    tagShadows(painting); scene.add(painting);
+    registerArrangeable('living_painting', painting, true);
+  }
+
+  // Kitchen: dishwasher (FBX, interactive) + fridge/oven/cabinet (decor)
+  // fridge, oven, dishwasher, cabinet lined up along the west wall in that
+  // order — dishwasher sized to match the oven and placed right next to it,
+  // with the cabinet right after, like a real kitchen counter run
+  async function buildKitchen(){
+    let fridge = await loadProp('fridge');
+    fridge.position.set(-6.9, 0, 1.3);
+    faceRoomCenter(fridge, 'kitchen');
+    tagShadows(fridge); scene.add(fridge);
+    registerArrangeable('fridge', fridge);
+
+    let oven = await loadProp('oven');
+    oven.position.set(-6.9, 0, 3.0);
+    faceRoomCenter(oven, 'kitchen');
+    tagShadows(oven); scene.add(oven);
+    registerArrangeable('oven', oven);
+
+    let dish = await fbxLoader.loadAsync(FURNITURE_BASE+'Kitchen/Dishwasher.fbx');
+    dish.scale.setScalar(0.0028); // scaled to match the oven's ~1.2-unit height (was 0.002, sized like a mini-fridge, not a real appliance)
+    dish.position.set(-6.9, 0, 4.5);
+    faceRoomCenter(dish, 'kitchen');
+    tagAppliance(dish, 'dishwasher');
+    tagShadows(dish);
+    scene.add(dish);
+    registerArrangeable('dishwasher', dish);
+
+    let cabinet = await loadProp('cabinetLow');
+    cabinet.position.set(-6.9, 0, 6.2);
+    faceRoomCenter(cabinet, 'kitchen');
+    tagShadows(cabinet); scene.add(cabinet);
+    registerArrangeable('cabinet', cabinet);
+
+    let shelf = await loadProp('shelves2');
+    shelf.position.set(-1, 0, 1);
+    faceRoomCenter(shelf, 'kitchen');
+    tagShadows(shelf); scene.add(shelf);
+    registerArrangeable('shelf', shelf);
+  }
+
+  // Bathroom: hot water tank + washing machine (interactive) + toilet/tub/sink (decor)
+  // doors in this room sit at (0,2) [to kitchen], (2,0) [to living room], and
+  // (2,6) [exterior back door] — fixtures are kept clear of all three
+  async function buildBathroom(){
+    let hw = makeHotWaterTank();
+    hw.position.set(7, 0, 6.5);
+    tagAppliance(hw, 'hotwater');
+    tagShadows(hw);
+    scene.add(hw);
+    registerArrangeable('hotwater', hw);
+
+    let washer = await loadProp('washingMachine');
+    washer.scale.setScalar(1.35); // was reading too small/toylike next to a human-scale avatar
+    washer.position.set(7, 0, 4);
+    faceRoomCenter(washer, 'bathroom');
+    tagAppliance(washer, 'laundry');
+    tagShadows(washer);
+    scene.add(washer);
+    registerArrangeable('laundry', washer);
+
+    let toilet = await loadProp('toilet');
+    toilet.position.set(6.5, 0, 1.5);
+    faceRoomCenter(toilet, 'bathroom');
+    tagShadows(toilet); scene.add(toilet);
+    registerArrangeable('toilet', toilet);
+
+    let tub = await loadProp('bathtub');
+    tub.position.set(4.5, 0, 6.5);
+    faceRoomCenter(tub, 'bathroom');
+    tagShadows(tub); scene.add(tub);
+    registerArrangeable('bathtub', tub);
+
+    let sink = await loadProp('bathroomSink');
+    sink.position.set(3, 0, 3);
+    faceRoomCenter(sink, 'bathroom');
+    tagShadows(sink); scene.add(sink);
+    registerArrangeable('sink', sink);
+
+    let mirror = await loadProp('mirror2');
+    mirror.position.set(3, 1.6, 0.15); // mounted on the north (LivingRoom-facing) interior wall, near the sink
+    mirror.rotation.y = FACE.south;
+    tagShadows(mirror); scene.add(mirror);
+    registerArrangeable('mirror', mirror, true);
+  }
+
+  await Promise.all([buildBedroom(), buildLivingRoom(), buildKitchen(), buildBathroom()]);
+  await applySavedLayout(); // re-apply any saved arrange-mode layout (repositioning + recreating spawned pieces) on top of the hardcoded defaults above
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Animated rabbit avatar — click-to-move, routed through doorways so it
+  // doesn't clip through interior walls when crossing between rooms. Walk/Run
+  // are separate FBX exports sharing the base model's skeleton (a common
+  // Mixamo-style workflow) — their clips get applied to the base mesh's own
+  // AnimationMixer rather than treated as separate characters. Not loaded at
+  // all in arrange mode — it's a positioning tool, the avatar just gets in
+  // the way and isn't part of what's being arranged.
+  // ══════════════════════════════════════════════════════════════════════
+  let avatar = null, avatarMixer = null, walkAction = null, walkClipReady = false, walkActive = false;
+  if(!ARRANGE_MODE){
+    // "Walking Remy.fbx" is a single Mixamo export bundling mesh+skeleton+
+    // walk-clip together (unlike the old rabbit, which shipped as separate
+    // base/walk files) — the walk clip comes back on this same load's own
+    // `.animations` array instead of a second request.
+    avatar = await fbxLoader.loadAsync(encodeURI(MODELS_BASE+'Walking Remy.fbx'));
+    // raw FBX is Mixamo's native real-world/cm scale (~160 units tall) —
+    // scaled down to the same ~2.2-unit person-height the room/doorways were
+    // tuned around (matches the previous rabbit avatar's scale exactly), and
+    // shifted down on Y so the feet land on the floor rather than floating —
+    // both empirically measured against this specific model's own bind-pose
+    // bounding box, the same way every other asset in this project has had
+    // its scale/pivot corrected.
+    const REMY_SCALE = 2.2/160.6878662663022;
+    avatar.scale.setScalar(REMY_SCALE);
+    avatar.position.set(4, 0, -2); // starts in the Living Room — verified empirically that this model's feet land exactly on the floor at y=0 once the AnimationMixer is attached, no extra offset needed
+    tagShadows(avatar);
+    scene.add(avatar);
+
+    avatarMixer = new THREE.AnimationMixer(avatar);
+    // "Take 001" is an empty leftover track Mixamo exports alongside the
+    // real clip — the actual walk animation is always the other one.
+    let walkClip = avatar.animations.find(a=>a.tracks.length>0) || avatar.animations[0];
+    if(walkClip){
+      // strip any baked root-motion translation track (typically on the
+      // hip/root bone) — we drive XZ movement ourselves via avatar.position
+      // every frame, so a translated root track fights it and made the
+      // avatar visually snap to the clip's own start-of-loop offset every
+      // time the action restarted, looking like it "teleported" to a random
+      // spot before walking. Only rotation tracks (limb swinging) should remain.
+      walkClip.tracks = walkClip.tracks.filter(t => !t.name.endsWith('.position'));
+      walkAction = avatarMixer.clipAction(walkClip);
+      walkAction.setLoop(THREE.LoopRepeat);
+      walkClipReady = true;
+    }
+  }
+
+  // ── Zone/doorway pathfinding — 4 rooms in a ring (Bedroom-LivingRoom-
+  // Bathroom-Kitchen-Bedroom); a walk between any two rooms is routed the
+  // short way around the ring through the doorway(s) in between.
+  const ZONE_ORDER = ['bedroom','livingroom','bathroom','kitchen'];
+  const DOORWAY_BETWEEN_ADJACENT = [
+    new THREE.Vector3(0, 0, -2),  // bedroom <-> livingroom
+    new THREE.Vector3(2, 0, 0),   // livingroom <-> bathroom
+    new THREE.Vector3(0, 0, 2),   // bathroom <-> kitchen
+    new THREE.Vector3(-2, 0, 0),  // kitchen <-> bedroom
+  ];
+  function zoneIndexOf(x,z){
+    if(x<0 && z<0) return 0; // bedroom
+    if(x>=0 && z<0) return 1; // livingroom
+    if(x>=0 && z>=0) return 2; // bathroom
+    return 3; // kitchen
+  }
+  function pathWaypoints(fromIdx, toIdx, finalTarget){
+    const n = ZONE_ORDER.length;
+    let waypoints = [];
+    if(fromIdx !== toIdx){
+      let cw = (toIdx-fromIdx+n)%n, ccw = (fromIdx-toIdx+n)%n;
+      if(cw <= ccw){
+        for(let i=0;i<cw;i++) waypoints.push(DOORWAY_BETWEEN_ADJACENT[(fromIdx+i)%n].clone());
+      } else {
+        for(let i=0;i<ccw;i++) waypoints.push(DOORWAY_BETWEEN_ADJACENT[(fromIdx-i-1+n)%n].clone());
+      }
+    }
+    waypoints.push(finalTarget.clone());
+    return waypoints;
+  }
+
+  const AVATAR_SPEED = 2.6; // units/sec
+  const AVATAR_TURN_SPEED = 10; // radians/sec — fast enough a turn still reads as near-instant at this speed, but never a single-frame snap
+  const AVATAR_BOB_HEIGHT = 0.09; // units — vertical hip-bob amplitude while walking
+  const AVATAR_BOB_CYCLES = 2; // bounces per full walk-clip loop (one per footfall)
+  let pendingApplianceId = null; // set when a device click sends the rabbit walking over; its panel opens once the rabbit actually arrives
+  function moveAvatarTo(target){
+    if(!avatar) return;
+    let fromIdx = zoneIndexOf(avatar.position.x, avatar.position.z);
+    let toIdx = zoneIndexOf(target.x, target.z);
+    avatar.userData.waypoints = pathWaypoints(fromIdx, toIdx, target);
+  }
+  function updateAvatar(dt){
+    if(!avatar) return;
+    avatarMixer.update(dt);
+    let wps = avatar.userData.waypoints;
+    let moving = wps && wps.length > 0;
+    if(walkClipReady && walkAction){
+      // keep the action's weight pinned at 1 forever and toggle `paused`
+      // instead of fading weight in/out. This clip's skeleton has a real
+      // T-pose bind (arms straight out) baked in as its rest pose — any time
+      // the walk action's weight is less than 1 (mid-fade, or fully 0 while
+      // idle), Three.js blends toward that bind pose, which is exactly the
+      // "stuck in a T-pose" look that was being reported. Pausing (instead of
+      // fading to 0 weight) freezes the clip on whatever mid-stride frame it
+      // was last at — always a real pose from the clip, never the bind pose —
+      // and un-pausing resumes from that same frame with no pop, so the old
+      // teleport-on-restart bug this crossfade was originally built to avoid
+      // still doesn't come back.
+      if(!walkActive){
+        walkActive = true;
+        walkAction.play();
+        walkAction.paused = true; // starts paused on the clip's own frame-0 pose (a normal standing pose, not the raw bind T-pose) until the rabbit first moves
+      }
+      walkAction.paused = !moving;
+      // synchronized vertical hip-bob — the clip's own root-motion track
+      // (which naturally bounces the hips on every footfall) was stripped
+      // since XZ translation is driven manually every frame; without some
+      // vertical motion the character reads as sliding across the floor
+      // rather than walking, especially from this game's steep top-down
+      // camera where the actual forward/back leg swing is heavily
+      // foreshortened and hard to see.
+      if(moving){
+        let phase = (walkAction.time / walkAction.getClip().duration) * Math.PI * 2 * AVATAR_BOB_CYCLES;
+        avatar.position.y = Math.abs(Math.sin(phase)) * AVATAR_BOB_HEIGHT;
+      } else {
+        avatar.position.y = 0;
+      }
+    }
+    if(!moving){
+      // the rabbit just arrived (or was already idle) — if this idle moment
+      // was the destination of a device click, open that device's panel now
+      // rather than when the click first happened, so it always looks like
+      // the rabbit walks over and interacts with the thing itself.
+      if(pendingApplianceId){
+        let id = pendingApplianceId;
+        pendingApplianceId = null;
+        selectAppliance(id);
+      }
+      if(tutorialMoveArmed){ tutorialMoveArmed = false; advanceTutorial(); } // the tutorial's "click the floor to walk" step just finished for real
+      return;
+    }
+    let targetPos = wps[0];
+    let dx = targetPos.x-avatar.position.x, dz = targetPos.z-avatar.position.z;
+    let dist = Math.sqrt(dx*dx+dz*dz);
+    if(dist < 0.08){ wps.shift(); return; }
+    let step = Math.min(dist, AVATAR_SPEED*dt);
+    avatar.position.x += (dx/dist)*step;
+    avatar.position.z += (dz/dist)*step;
+    // turn smoothly toward the walk direction instead of snapping straight
+    // to it — a hard `rotation.y = atan2(...)` flips the whole character to
+    // its new facing in a single frame, and for a target roughly behind the
+    // avatar that's a full instant 180° spin. At this model's scale a
+    // same-frame full-body flip reads exactly like the character teleported
+    // to a different spot and turned up already facing the new direction,
+    // which is what was being reported as "starts from a random location."
+    let targetRotY = Math.atan2(dx,dz);
+    let angleDiff = ((targetRotY - avatar.rotation.y + Math.PI) % (2*Math.PI)) - Math.PI; // shortest signed turn, handles the ±PI wrap
+    let turnStep = Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), AVATAR_TURN_SPEED*dt);
+    avatar.rotation.y += turnStep;
+  }
+
+  // ── Lighting ──────────────────────────────────────────────────────────────
+  const sun = new THREE.DirectionalLight(0xfff2d9, 1.1);
+  sun.position.set(6, 10, 5);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.camera.left = HOUSE_MIN_X-1; sun.shadow.camera.right = HOUSE_MAX_X+1;
+  sun.shadow.camera.top = HOUSE_MAX_Z+1; sun.shadow.camera.bottom = HOUSE_MIN_Z-1;
+  sun.shadow.camera.near = 1; sun.shadow.camera.far = 40;
+  scene.add(sun);
+
+  const fill = new THREE.HemisphereLight(0x8899bb, 0x0a0f1e, 0.55);
+  scene.add(fill);
+
+  const lampLight = new THREE.PointLight(0xffd27a, 0, 6); // starts off (lights appliance off by default)
+  lampLight.position.copy(appliances.lights.position).add(new THREE.Vector3(0,1.6,0));
+  scene.add(lampLight);
+
+  // the "lights" toggle is a whole-house switch, not just the one lamp — a
+  // soft fill light in each of the other 3 rooms turns on/off with it too,
+  // so flipping it actually illuminates the whole house
+  const roomFillLights = Object.values(ROOMS).map(room=>{
+    let light = new THREE.PointLight(0xffe8c2, 0, 11, 1.4); // reduced decay so a modest intensity still fills an 8x8 room
+    light.position.set((room.xMin+room.xMax)/2, 3, (room.zMin+room.zMax)/2);
+    scene.add(light);
+    return light;
+  });
+
+  // ── Camera + orbit controls — dollhouse cutaway. The house now has all 4
+  // exterior walls (with proper doors instead of an "open" missing side), so
+  // the camera can orbit freely all the way around without ever exposing
+  // unmodeled geometry — only the polar angle is bounded, to avoid a fully
+  // flat or fully top-down view.
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.target.set(0, 0, 0);
+  controls.minDistance = 14;
+  controls.maxDistance = 32;
+  controls.minPolarAngle = 0.2;              // ~11° from vertical — not fully overhead
+  controls.maxPolarAngle = 1.3;              // ~74° from vertical — not fully flat
+  controls.update();
+
+  // dollhouse-cutaway wall visibility: hide whichever exterior wall(s) sit
+  // between the camera and the rooms, based purely on the camera's horizontal
+  // bearing around the house (its height/tilt doesn't matter for this test —
+  // only which cardinal side it's currently orbited to)
+  const _camBearing = new THREE.Vector2();
+  function setWallOpacity(obj, opacity){
+    obj.traverse(o=>{ if(o.isMesh && o.material) o.material.opacity = opacity; });
+  }
+  function updateWallVisibility(){
+    _camBearing.set(camera.position.x-controls.target.x, camera.position.z-controls.target.z).normalize();
+    dynamicWalls.forEach(({mesh, normal, isHouseExterior})=>{
+      let facingCamera = normal.x*_camBearing.x + normal.z*_camBearing.y;
+      let nearCamera = facingCamera >= 0.2;
+      if(isHouseExterior){
+        // true house-boundary walls never fully vanish — fully hiding them
+        // made the rabbit look like it could walk straight off into empty
+        // space near a door (there was nothing left on screen marking where
+        // the house actually ends). Fading to a faint outline instead keeps
+        // that boundary legible from every orbit angle while still letting
+        // the camera see into the room behind it.
+        setWallOpacity(mesh, nearCamera ? 0.45 : 1);
+      } else {
+        mesh.visible = !nearCamera;
+      }
+    });
+  }
+
+  // ── Roof slab: a simple flat "shingle" cap over the whole house, on top of
+  // the per-wall trim added in placeWallCell. A literal roof would block the
+  // camera's whole reason for being a dollhouse-cutaway (seeing into rooms
+  // from above), so instead of tying it to camera bearing like the walls,
+  // it fades in by polar angle — invisible at the steep, near-overhead
+  // angles gameplay actually uses, and appearing once the camera is pulled
+  // down toward a more house-like side view.
+  const roof = new THREE.Mesh(
+    new THREE.BoxGeometry(HOUSE_MAX_X-HOUSE_MIN_X+2, 0.3, HOUSE_MAX_Z-HOUSE_MIN_Z+2),
+    new THREE.MeshLambertMaterial({ color:0x6b3f2e, transparent:true, opacity:0 })
+  );
+  roof.position.set((HOUSE_MIN_X+HOUSE_MAX_X)/2, WALL_H+0.5, (HOUSE_MIN_Z+HOUSE_MAX_Z)/2);
+  // no castShadow: a transparent material's opacity doesn't stop Three.js
+  // from still rendering its shadow, so at the steep angles where the roof
+  // is meant to be invisible it was casting a visible phantom shadow anyway.
+  scene.add(roof);
+  function updateRoofVisibility(){
+    let polar = controls.getPolarAngle();
+    // pushed close to maxPolarAngle (1.3) — the roof was fading in too early
+    // and covering most of the house for a big chunk of the orbit range now
+    // that it's staying invisible for far more of it, only appearing once
+    // the camera is pulled down to a genuinely flat, near-horizontal view.
+    let t = THREE.MathUtils.clamp((polar-1.05)/(1.25-1.05), 0, 1);
+    roof.material.opacity = t;
+  }
+
+  function onResize(){
+    camera.aspect = container.clientWidth/container.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    labelRenderer.setSize(container.clientWidth, container.clientHeight);
+  }
+  window.addEventListener('resize', onResize);
+
+  // ══════════════════════════════════════════════════════════════════════
+  // PHASE B2 — click-to-interact. Raycasts against the same appliance
+  // meshes tagged above; a hit opens the matching side-panel control, wired
+  // straight to the Phase A engine's own action functions (setThermostat/
+  // toggleHotWater/etc, defined in the classic <script> block above and
+  // readable here as page globals).
+  // ══════════════════════════════════════════════════════════════════════
+  const raycaster = new THREE.Raycaster();
+  const pointerNDC = new THREE.Vector2();
+  let hoveredId = null, selectedId = null;
+
+  function setApplianceHighlight(group, amount){
+    group.traverse(o=>{
+      if(o.isMesh && o.material && 'emissive' in o.material){
+        o.material.emissive.setHex(0xffffff);
+        o.material.emissiveIntensity = amount;
+      }
+    });
+  }
+
+  function updatePointerNDC(evt){
+    let rect = renderer.domElement.getBoundingClientRect();
+    pointerNDC.x = ((evt.clientX-rect.left)/rect.width)*2-1;
+    pointerNDC.y = -((evt.clientY-rect.top)/rect.height)*2+1;
+  }
+  function raycastAppliance(){
+    raycaster.setFromCamera(pointerNDC, camera);
+    let hits = raycaster.intersectObjects(applianceMeshes, false);
+    return hits.length ? hits[0].object.userData.applianceId : null;
+  }
+  function raycastFloor(){
+    raycaster.setFromCamera(pointerNDC, camera);
+    let hits = raycaster.intersectObjects(floorMeshes, false);
+    return hits.length ? hits[0].point : null;
+  }
+
+  renderer.domElement.addEventListener('pointermove', (evt)=>{
+    updatePointerNDC(evt);
+    let id = raycastAppliance();
+    if(id !== hoveredId){
+      if(hoveredId && hoveredId!==selectedId) setApplianceHighlight(appliances[hoveredId], 0);
+      hoveredId = id;
+      if(hoveredId && hoveredId!==selectedId) setApplianceHighlight(appliances[hoveredId], 0.15);
+    }
+    renderer.domElement.style.cursor = id ? 'pointer' : 'default';
+  });
+  let justDragged = false; // set by arrange mode below, so a drag-release doesn't also trigger a click
+  renderer.domElement.addEventListener('click', (evt)=>{
+    if(justDragged) return;
+    updatePointerNDC(evt);
+    let id = raycastAppliance();
+    if(id){
+      if(avatar){
+        // send the rabbit walking over first — its panel opens on arrival
+        // (see the pendingApplianceId check in updateAvatar), not immediately.
+        pendingApplianceId = id;
+        moveAvatarTo(appliances[id].position);
+      } else {
+        selectAppliance(id); // arrange mode: no avatar to walk, open immediately
+      }
+      return;
+    }
+    pendingApplianceId = null; // clicking the floor cancels any pending walk-to-device order
+    let floorPoint = raycastFloor();
+    if(floorPoint){
+      moveAvatarTo(floorPoint);
+      if(tutorialStepIndex === TUTORIAL_MOVE_STEP) tutorialMoveArmed = true; // completes once this walk actually finishes, see updateAvatar
+    }
+  });
+
+  if(ARRANGE_MODE){
+    // always bright in arrange mode, regardless of the lights toggle's real
+    // state — this is a positioning tool, not the game, so nothing should
+    // ever be hard to see while dragging things around
+    state.lightsOn = true;
+    updateLightsVisual();
+    let selectedArrangeId = null, isDragging = false;
+    const groundPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
+    const dragHit = new THREE.Vector3();
+
+    function raycastArrangeable(){
+      raycaster.setFromCamera(pointerNDC, camera);
+      let hits = raycaster.intersectObjects(arrangeMeshes, false);
+      return hits.length ? hits[0].object.userData.arrangeId : null;
+    }
+    function setArrangeHighlight(id, amount){
+      if(!id) return;
+      placeables[id].traverse(o=>{
+        if(o.isMesh && o.material && 'emissive' in o.material){
+          o.material.emissive.setHex(0x3b82f6);
+          o.material.emissiveIntensity = amount;
+        }
+      });
+    }
+    function selectArrangeable(id){
+      if(selectedArrangeId) setArrangeHighlight(selectedArrangeId, 0);
+      selectedArrangeId = id;
+      if(id){ setArrangeHighlight(id, 0.5); }
+      controls.enableZoom = !id; // scroll rotates the selection instead of zooming, while one is selected
+      let wallMounted = id && placeables[id].userData.wallMounted;
+      instructions.textContent = !id
+        ? 'ARRANGE MODE — click a piece (furniture or appliance) to select it, then drag to move / scroll to rotate'
+        : wallMounted
+          ? 'ARRANGE MODE — selected: ' + id + ' — drag to slide along the current wall, scroll to rotate onto a different wall, +/- to resize, Delete to remove, click empty floor to deselect'
+          : 'ARRANGE MODE — selected: ' + id + ' — drag to move, scroll to rotate, +/- to resize, Delete to remove, click empty floor to deselect';
+      [deleteBtn, scaleDownBtn, scaleUpBtn].forEach(btn=>{
+        btn.disabled = !id;
+        btn.style.opacity = id ? '1' : '0.4';
+        btn.style.cursor = id ? 'pointer' : 'default';
+      });
+    }
+
+    renderer.domElement.addEventListener('pointerdown', (evt)=>{
+      updatePointerNDC(evt);
+      let id = raycastArrangeable();
+      if(id){
+        selectArrangeable(id);
+        isDragging = true; controls.enabled = false;
+        evt.preventDefault();
+      } else if(selectedArrangeId){
+        selectArrangeable(null); // clicked empty floor — deselect
+      }
+    });
+    const GRID_SNAP = 0.5; // furniture snaps to a half-unit sub-grid — finer than the 4-unit wall/floor grid, but still "blocks", not free-flowing
+    window.addEventListener('pointermove', (evt)=>{
+      if(!isDragging || !selectedArrangeId) return;
+      updatePointerNDC(evt);
+      raycaster.setFromCamera(pointerNDC, camera);
+      if(raycaster.ray.intersectPlane(groundPlane, dragHit)){
+        let obj = placeables[selectedArrangeId];
+        if(obj.userData.wallMounted){
+          // wall-mounted pieces only slide along the wall they're already
+          // flush against — the axis running INTO the wall is left exactly
+          // where it is, so a drag can never pull one through to the wall's
+          // outer face (which is what was happening to paintings before).
+          let alongX = Math.abs(Math.cos(obj.rotation.y)) > Math.abs(Math.sin(obj.rotation.y));
+          if(alongX) obj.position.x = Math.round(dragHit.x/GRID_SNAP)*GRID_SNAP;
+          else obj.position.z = Math.round(dragHit.z/GRID_SNAP)*GRID_SNAP;
+        } else {
+          obj.position.x = Math.round(dragHit.x/GRID_SNAP)*GRID_SNAP;
+          obj.position.z = Math.round(dragHit.z/GRID_SNAP)*GRID_SNAP;
+        }
+      }
+    });
+    window.addEventListener('pointerup', ()=>{
+      if(isDragging){
+        isDragging = false; controls.enabled = true;
+        justDragged = true; setTimeout(()=>{ justDragged = false; }, 50);
+      }
+    });
+    renderer.domElement.addEventListener('wheel', (evt)=>{
+      if(selectedArrangeId){
+        evt.preventDefault();
+        evt.stopImmediatePropagation(); // otherwise OrbitControls' own wheel handler still zooms the camera at the same time
+        let obj = placeables[selectedArrangeId];
+        let oldRotY = obj.rotation.y;
+        // discrete 45° steps, not a continuous spin — one scroll notch = one
+        // step, snapping the current angle first so it always lands exactly
+        // on a 45° multiple (0/90/180/270 = wall-aligned, 45/135/... = diagonal)
+        let newRotY = snapTo45(oldRotY) + Math.sign(evt.deltaY)*STEP_45;
+        let mo = obj.userData.mountOffset;
+        if(mo){
+          // this piece's origin sits offset from its visual center along its
+          // own rotated local Z/Y (see placeWindow/placeDoor) — rotating it
+          // in place without correcting for that sent the visible mesh
+          // flying to wherever that offset pointed under the NEW rotation,
+          // once far enough to land outside the house. Solve for the new
+          // origin that keeps the same visual point fixed across the turn,
+          // so rotating pivots the piece in place instead of flinging it.
+          let visX = obj.position.x + mo.z*Math.sin(oldRotY);
+          let visZ = obj.position.z + mo.z*Math.cos(oldRotY);
+          obj.position.x = visX - mo.z*Math.sin(newRotY);
+          obj.position.z = visZ - mo.z*Math.cos(newRotY);
+        }
+        obj.rotation.y = newRotY;
+      }
+    }, {passive:false, capture:true});
+
+    function deleteSelected(){
+      if(!selectedArrangeId) return;
+      let idToDelete = selectedArrangeId;
+      let obj = placeables[idToDelete];
+      selectArrangeable(null);
+      scene.remove(obj);
+      delete placeables[idToDelete];
+      for(let i=arrangeMeshes.length-1;i>=0;i--){
+        if(arrangeMeshes[i].userData.arrangeId === idToDelete) arrangeMeshes.splice(i,1);
+      }
+    }
+    const SCALE_MIN = 0.4, SCALE_MAX = 2.5;
+    function rescaleSelected(multiplier){
+      if(!selectedArrangeId) return;
+      let obj = placeables[selectedArrangeId];
+      obj.userData.scaleFactor = THREE.MathUtils.clamp(obj.userData.scaleFactor*multiplier, SCALE_MIN, SCALE_MAX);
+      obj.scale.copy(obj.userData.baseScale).multiplyScalar(obj.userData.scaleFactor);
+    }
+
+    window.addEventListener('keydown', (evt)=>{
+      if(document.activeElement.tagName === 'TEXTAREA') return;
+      if(evt.key === 'Delete' || evt.key === 'Backspace') deleteSelected();
+      else if(evt.key === '+' || evt.key === '=') rescaleSelected(1.1);
+      else if(evt.key === '-' || evt.key === '_') rescaleSelected(1/1.1);
+    });
+
+    let instructions = document.createElement('div');
+    instructions.textContent = 'ARRANGE MODE — click a piece (furniture or appliance) to select it, then drag to move / scroll to rotate / Delete key to remove it';
+    instructions.style.cssText = 'position:absolute;top:8px;left:8px;z-index:10;padding:6px 10px;background:rgba(0,0,0,0.75);color:#fbbf24;font-size:11px;border-radius:6px;font-family:monospace;pointer-events:none;max-width:340px;';
+    container.appendChild(instructions);
+
+    let saveBtn = document.createElement('button');
+    saveBtn.textContent = 'Save Layout';
+    saveBtn.style.cssText = 'position:absolute;top:8px;right:8px;z-index:11;padding:6px 12px;background:#3b82f6;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;';
+    container.appendChild(saveBtn);
+
+    // selection toolbar (delete/resize) — disabled/faded until something is
+    // selected (selectArrangeable toggles that); keyboard shortcuts (+/-,
+    // Delete/Backspace) do the same thing, these just make it discoverable.
+    function makeToolbarBtn(label, left, onClick){
+      let btn = document.createElement('button');
+      btn.textContent = label;
+      btn.disabled = true;
+      btn.style.cssText = `position:absolute;top:66px;left:${left}px;z-index:11;padding:6px 10px;background:#374151;color:#fff;border:none;border-radius:6px;font-size:12px;opacity:0.4;`;
+      btn.addEventListener('click', onClick);
+      container.appendChild(btn);
+      return btn;
+    }
+    let deleteBtn = makeToolbarBtn('Delete', 8, deleteSelected);
+    let scaleDownBtn = makeToolbarBtn('Scale −', 68, ()=>rescaleSelected(1/1.1));
+    let scaleUpBtn = makeToolbarBtn('Scale +', 132, ()=>rescaleSelected(1.1));
+
+    // ── Furniture/appliance picker — every prop from both packs, so you can
+    // add more pieces yourself instead of asking for them one at a time.
+    // PSX pack items are pre-verified at correct real-world scale; the Low
+    // Poly Furniture (FBX) items are marked "(?)" since only Dishwasher/Desk
+    // from that pack have been individually scale-checked — loadCatalogItem
+    // has a safety-net auto-scale for anything that loads at an implausible
+    // size, but a freshly-added FBX piece is still worth a visual sanity check.
+    const PSX_FILES = ['apple','basketball','basketballHoop','bathroomSink','bathroomSink2','bathtub','bed','bed2','bed3','book','book2','book3','book4','bookshelf','bookStack','bookStack2','bookStack3','bookStack4','bookStack5','bottle','bottle1','bottle2','box','box2','box3','breakerBox','broom','bucket','bucket2','burger','cabinet','cabinetBig','cabinetHigh','cabinetHighCorner','cabinetLow','cabinetLowCorner','cabinetSink','carpet','carpet2','carpet3','carpet4','ceilingLight','ceilingLight2','ceilingLight3','chair','chair2','chair3','chair4','chessboard','clock','couchBig','couchBig2','couchSmall','couchSmall2','cup','cup2','cup3','cup4','cup5','doormat','egg','flashlight','fridge','globe','hanger','hanger2','knife','ladder','lamp','lightSwitch','milkCarton','mirror','mirror2','mirror3','oven','painting','painting2','painting3','painting4','painting5','pallet','pan','paperBag','pencilCup','phone','pizza','plant','plant2','plant3','plate','plate2','plate3','plate4','pot','powerSocket','product','product2','product3','product4','product5','radiator','radio','remote','scotch','shelves','shelves2','sideboard','sideboard2','sideboard3','sideboard4','table','table2','table3','tableLamp','tableSmall','tableSmall2','tableSmall3','teddybear','toilet','toiletPaper','trashBag','trashBag2','trashBin','tv','umbrella','vhs','wallLight','wallShelf','wallShelf2','wallShelf3','wallShelf4','washingMachine','windowCurtains','windowCurtains2','windowCurtains3','windowCurtains4'];
+    const LPF_FILES = ['Bathroom/Bath','Bathroom/Shower','Bathroom/Sink','Bathroom/Toilet Roll Holder','Bathroom/Toilet Rolls','Bathroom/Toilet','Bathroom/Towel Holder','Beds/Bed Double','Beds/Bed Single','Beds/Bunk Bed','Beds/Triple Bunk Bed','Carpets/Carpet A','Carpets/Carpet B','Carpets/Carpet C','Chairs/Chair A','Chairs/Chair B','Chairs/Chair C','Chairs/Chair D','Chairs/Chair E','Doors/Door A','Doors/Door B','Doors/Door C','Drawers/Drawer A','Drawers/Drawer B','Electronics/Console A','Electronics/Console B','Electronics/Console C','Electronics/Console D','Electronics/Keyboard','Electronics/Laptop','Electronics/Monitor','Electronics/Pc','Electronics/Phone','Electronics/Tablet','Electronics/TV A','Electronics/TV B','Kitchen/Blender','Kitchen/Cupboard A','Kitchen/Cupboard B','Kitchen/Cupboard C','Kitchen/Cupboard D','Kitchen/Cupboard E','Kitchen/Cupboard F','Kitchen/Cupboard Sink','Kitchen/Dishwasher','Kitchen/Fridge A','Kitchen/Fridge B','Kitchen/Kettle','Kitchen/Kitchen Roll','Kitchen/Knife Block','Kitchen/Microwave','Kitchen/Oven','Kitchen/Toaster','Kitchen/Washing Machine','Lights/Ceiling Light','Lights/Lamp A','Lights/Lamp B','Lights/Lamp C','Lights/Wall Light','Miscellaneous/Alarm Clock','Miscellaneous/Bin','Miscellaneous/Books A','Miscellaneous/Books B','Miscellaneous/Bowl','Miscellaneous/Broom','Miscellaneous/Ceiling Fan','Miscellaneous/Clock','Miscellaneous/Curtains','Miscellaneous/Fan','Miscellaneous/Glass','Miscellaneous/Globe','Miscellaneous/Hoover','Miscellaneous/Ladder','Miscellaneous/Light Switch','Miscellaneous/Mirror A','Miscellaneous/Mirror B','Miscellaneous/Mug','Miscellaneous/Pan','Miscellaneous/Plant A','Miscellaneous/Plant B','Miscellaneous/Plate','Miscellaneous/Pot','Miscellaneous/Radiator A','Miscellaneous/Radiator B','Miscellaneous/Safe A','Miscellaneous/Safe B','Miscellaneous/Socket','Miscellaneous/Speaker','Miscellaneous/Vase','Miscellaneous/Vent','Shelves/Shelf A','Shelves/Shelf B','Shelves/Shelf C','Shelves/Shelf D','Shelves/Shelf E','Shelves/Wall Shelf A','Shelves/Wall Shelf B','Sofas/Sofa A','Sofas/Sofa B','Sofas/Sofa C','Sofas/Sofa D','Tables/Desk','Tables/Rounded Table A','Tables/Rounded Table B','Tables/Rounded Table C','Tables/Table A','Tables/Table B','Tables/Table C','Tables/Table D','Windows/Window A','Windows/Window B','Windows/Window C'];
+    function labelFromFile(f){
+      let base = f.includes('/') ? f.split('/').pop() : f;
+      let spaced = base.replace(/([a-z0-9])([A-Z])/g,'$1 $2').replace(/([A-Za-z])(\d+)$/,'$1 $2').trim();
+      return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+    }
+    function categorize(f){
+      let n = f.toLowerCase();
+      if(/\bbed\b|bunk/.test(n)) return 'Bedroom';
+      if(/chair|couch|sofa/.test(n)) return 'Seating';
+      if(/\btable\b|desk/.test(n)) return 'Tables & Desks';
+      if(/cabinet|sideboard|shelv|shelf|bookshelf|drawer|cupboard|safe/.test(n)) return 'Storage';
+      if(/fridge|\boven\b|washing|kettle|toaster|blender|microwave/.test(n)) return 'Kitchen Appliances';
+      if(/bathroomsink|bathtub|\bbath\b|toilet|shower|towel/.test(n)) return 'Bathroom';
+      if(/lamp|light|fan\b/.test(n)) return 'Lighting';
+      if(/painting|mirror|plant|carpet|clock|globe|chessboard|teddybear|curtain|vase|doormat/.test(n)) return 'Decor';
+      if(/\btv\b|radio|phone|remote|vhs|laptop|monitor|console|tablet|\bpc\b|keyboard|speaker/.test(n)) return 'Electronics';
+      if(/cup|plate|bottle|milkcarton|knife|pencilcup|\bpan\b|\bpot\b|bowl|mug|glass|kitchenroll|knifeblock/.test(n)) return 'Kitchenware';
+      if(/window|\bdoor\b/.test(n)) return 'Windows & Doors';
+      return 'Misc';
+    }
+    const CATALOG = [
+      ...PSX_FILES.map(f=>({source:'psx', file:f})),
+      ...LPF_FILES.map(f=>({source:'fbx', file:f})),
+    ];
+    let catByGroup = {};
+    CATALOG.forEach(entry=>{ (catByGroup[categorize(entry.file)] = catByGroup[categorize(entry.file)]||[]).push(entry); });
+
+    let pickerSelect = document.createElement('select');
+    pickerSelect.style.cssText = 'position:absolute;top:42px;right:96px;width:212px;z-index:11;font-size:12px;padding:4px;';
+    Object.keys(catByGroup).sort().forEach(cat=>{
+      let optgroup = document.createElement('optgroup');
+      optgroup.label = cat;
+      catByGroup[cat].forEach(entry=>{
+        let opt = document.createElement('option');
+        opt.value = JSON.stringify(entry);
+        opt.textContent = labelFromFile(entry.file) + (entry.source==='fbx' ? ' (?)' : '');
+        optgroup.appendChild(opt);
+      });
+      pickerSelect.appendChild(optgroup);
+    });
+    container.appendChild(pickerSelect);
+
+    let addBtn = document.createElement('button');
+    addBtn.textContent = '+ Add';
+    addBtn.style.cssText = 'position:absolute;top:42px;right:8px;width:80px;z-index:11;padding:4px 0;background:#16a34a;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;';
+    container.appendChild(addBtn);
+
+    let spawnCounter = 0;
+    addBtn.addEventListener('click', async ()=>{
+      let entry = JSON.parse(pickerSelect.value);
+      let obj = await loadCatalogItem(entry);
+      tagShadows(obj);
+      obj.userData.spawn = entry;
+      obj.position.set(0, 0, 0); // dropped at the house's center crossing point — drag it from there into whichever room
+      scene.add(obj);
+      let id = 'custom_' + (spawnCounter++) + '_' + entry.file.replace(/[\/\s]/g,'_');
+      registerArrangeable(id, obj);
+      selectArrangeable(id); // auto-select so it's immediately easy to find and drag
+    });
+
+    let exportBox = document.createElement('textarea');
+    exportBox.style.cssText = 'position:absolute;top:76px;right:8px;width:300px;height:240px;z-index:11;font-family:monospace;font-size:10px;display:none;';
+    container.appendChild(exportBox);
+
+    saveBtn.addEventListener('click', ()=>{
+      let layout = {};
+      Object.entries(placeables).forEach(([id,obj])=>{
+        layout[id] = { x:+obj.position.x.toFixed(2), z:+obj.position.z.toFixed(2), rotY:+obj.rotation.y.toFixed(3), scale:+(obj.userData.scaleFactor||1).toFixed(2) };
+        if(obj.userData.spawn) layout[id].spawn = obj.userData.spawn; // custom picker-added piece — needs to be recreated on load, not just repositioned
+      });
+      // saved to localStorage so it survives a reload and is re-applied on top
+      // of the hardcoded defaults (in arrange mode AND the normal game) —
+      // separate from that, still shown as text below for copying back into
+      // the actual source as the new permanent defaults
+      localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layout));
+      let lines = Object.entries(layout).map(([id,t])=>
+        `  ${id}: { x:${t.x}, z:${t.z}, rotY:${t.rotY}, scale:${t.scale}${t.spawn?', spawn:'+JSON.stringify(t.spawn):''} },`
+      );
+      let text = '{\n'+lines.join('\n')+'\n}';
+      exportBox.value = text;
+      exportBox.style.display = 'block';
+      exportBox.select();
+      console.log('[Arrange Mode] Layout saved to localStorage and exported:\n'+text);
+      let original = saveBtn.textContent;
+      saveBtn.textContent = 'Saved ✓';
+      setTimeout(()=>{ saveBtn.textContent = original; }, 1200);
+    });
+  }
+
+  const PANEL_IDS = ['thermostat','hotwater','dishwasher','laundry','lights'];
+  function selectAppliance(id){
+    if(selectedId) setApplianceHighlight(appliances[selectedId], 0);
+    selectedId = id;
+    setApplianceHighlight(appliances[id], 0.35);
+    document.getElementById('panel-placeholder').style.display = 'none';
+    PANEL_IDS.forEach(pid=>{ document.getElementById('panel-'+pid).style.display = (pid===id)?'block':'none'; });
+    refreshPanel(id);
+  }
+  function refreshPanel(id){
+    if(id==='thermostat'){
+      document.getElementById('thermoSlider').value = state.setpoint;
+      document.getElementById('thermoReadout').textContent = state.setpoint+'°F';
+    } else if(id==='hotwater'){
+      document.getElementById('hwReadout').textContent = 'Currently: '+(state.hwOn?'on':'off');
+    } else if(id==='dishwasher'){
+      document.getElementById('dishReadout').textContent = state.dish.running ? 'Running…' : ('Overdue clock: '+state.dish.overdueHoursRaw.toFixed(1)+' hrs');
+    } else if(id==='laundry'){
+      document.getElementById('laundryReadout').textContent = state.laundry.running ? 'Running…' : ('Overdue clock: '+state.laundry.overdueHoursRaw.toFixed(1)+' hrs');
+    } else if(id==='lights'){
+      document.getElementById('lightsReadout').textContent = 'Currently: '+(state.lightsOn?'on':'off');
+    }
+  }
+  function updateLightsVisual(){
+    lampLight.intensity = state.lightsOn ? 1.2 : 0;
+    roomFillLights.forEach(l=>{ l.intensity = state.lightsOn ? 6 : 0; });
+    appliances.lights.traverse(o=>{
+      if(o.isMesh && o.geometry.type==='SphereGeometry'){
+        o.material.emissive.setHex(state.lightsOn?0xffe8a3:0x000000);
+        o.material.emissiveIntensity = state.lightsOn?0.8:0;
+      }
+    });
+  }
+
+  document.getElementById('thermoSlider').addEventListener('input',(e)=>{ setThermostat(e.target.value); refreshPanel('thermostat'); });
+  document.getElementById('hwToggleBtn').addEventListener('click',()=>{ toggleHotWater(!state.hwOn); refreshPanel('hotwater'); });
+  document.getElementById('dishRunBtn').addEventListener('click',()=>{ startDishwasher(); refreshPanel('dishwasher'); });
+  document.getElementById('laundryRunBtn').addEventListener('click',()=>{ startLaundry(); refreshPanel('laundry'); });
+  document.getElementById('lightsToggleBtn').addEventListener('click',()=>{ toggleLights(!state.lightsOn); refreshPanel('lights'); updateLightsVisual(); });
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Guided tutorial — runs every session, before `gameStarted` ever flips
+  // true (see the classic <script>'s start-btn handler), so the clock/cost
+  // never move until it's done. Each device step only advances once the
+  // participant performs the real action, by piggybacking on the exact same
+  // DOM listeners the live game already has just above (not a separate
+  // simulated/fake interaction) — "try it yourself", not just "watch me".
+  // ══════════════════════════════════════════════════════════════════════
+  const TUTORIAL_DEVICE_STEPS = [
+    { id:'lights',      emoji:'💡', title:'Lights',      text:"Click the glowing lamp, then press Toggle to turn the lights on or off!" },
+    { id:'thermostat', emoji:'🌡️', title:'Thermostat', text:"Click the glowing thermostat, then drag the slider to change the temperature!" },
+    { id:'hotwater',    emoji:'🚿', title:'Hot Water',   text:"Click the glowing hot water tank, then press Toggle to turn it on or off!" },
+    { id:'dishwasher',  emoji:'🍽️', title:'Dishwasher',  text:"Click the glowing dishwasher, then press Run now to start washing dishes!" },
+    { id:'laundry',     emoji:'👕', title:'Laundry',     text:"Click the glowing washing machine, then press Run now to start a load!" },
+  ];
+  const TUTORIAL_MOVE_STEP = TUTORIAL_DEVICE_STEPS.length; // one extra step, after all the devices
+  // Two more callout steps after the move step, pointing at the comfort bar
+  // and the rate-schedule strip — these are 2D HUD/panel elements, not 3D
+  // appliances, so they anchor to the target DOM element's own bounding box
+  // instead of the 3D→screen projection used for devices, and they advance
+  // on a simple "Got it" dismissal since there's no device interaction to
+  // gate on for a piece of UI you just look at.
+  const TUTORIAL_UI_STEPS = [
+    { targetEl:'hud-comfort-stat', emoji:'😊', title:'Comfort score', text:"This bar shows how comfortable your household is right now. Hover over it any time to see the exact number and a breakdown by device." },
+    { targetEl:'rate-strip', emoji:'⚡', title:'Electricity rates', text:"Electricity costs change by time of day. Blue hours are off-peak (cheapest), gray is regular, red is peak (most expensive) — run things during blue hours to save money!" },
+  ];
+  const TUTORIAL_UI_STEP_START = TUTORIAL_MOVE_STEP + 1;
+  const TUTORIAL_TOTAL_STEPS = TUTORIAL_UI_STEP_START + TUTORIAL_UI_STEPS.length;
+  let tutorialStepIndex = -1; // -1 = not running yet
+  let tutorialMoveArmed = false; // true once a walk has been started specifically for the move step, see the click handler + updateAvatar above
+
+  const tutStepCard = document.getElementById('tutorial-step-card');
+  const tutPointerEl = document.getElementById('tutorial-pointer');
+  const tutEmojiEl = document.getElementById('tut-step-emoji');
+  const tutTitleEl = document.getElementById('tut-step-title');
+  const tutTextEl = document.getElementById('tut-step-text');
+  const tutProgressEl = document.getElementById('tut-step-progress');
+  const tutDismissBtn = document.getElementById('tut-dismiss-btn');
+
+  function currentTutorialDeviceId(){
+    return (tutorialStepIndex>=0 && tutorialStepIndex<TUTORIAL_DEVICE_STEPS.length) ? TUTORIAL_DEVICE_STEPS[tutorialStepIndex].id : null;
+  }
+  function currentTutorialUiStep(){
+    let idx = tutorialStepIndex - TUTORIAL_UI_STEP_START;
+    return (idx>=0 && idx<TUTORIAL_UI_STEPS.length) ? TUTORIAL_UI_STEPS[idx] : null;
+  }
+  function showTutorialStep(){
+    tutDismissBtn.style.display = 'none';
+    if(tutorialStepIndex < TUTORIAL_DEVICE_STEPS.length){
+      let step = TUTORIAL_DEVICE_STEPS[tutorialStepIndex];
+      tutEmojiEl.textContent = step.emoji;
+      tutTitleEl.textContent = step.title;
+      tutTextEl.textContent = step.text;
+      tutProgressEl.textContent = `Step ${tutorialStepIndex+1} of ${TUTORIAL_TOTAL_STEPS}`;
+      tutStepCard.style.display = 'block';
+    } else if(tutorialStepIndex === TUTORIAL_MOVE_STEP){
+      tutEmojiEl.textContent = '🚶';
+      tutTitleEl.textContent = 'Get moving!';
+      tutTextEl.textContent = 'Click anywhere on the floor to walk Remy there!';
+      tutProgressEl.textContent = `Step ${TUTORIAL_MOVE_STEP+1} of ${TUTORIAL_TOTAL_STEPS}`;
+      tutStepCard.style.display = 'block';
+    } else if(currentTutorialUiStep()){
+      let step = currentTutorialUiStep();
+      tutEmojiEl.textContent = step.emoji;
+      tutTitleEl.textContent = step.title;
+      tutTextEl.textContent = step.text;
+      tutProgressEl.textContent = `Step ${tutorialStepIndex+1} of ${TUTORIAL_TOTAL_STEPS}`;
+      tutStepCard.style.display = 'block';
+      tutDismissBtn.style.display = 'inline-block';
+    } else {
+      // tutorial fully done — hand off to its own outro screen
+      tutStepCard.style.display = 'none';
+      tutPointerEl.style.display = 'none';
+      document.getElementById('tutorial-outro').style.display = 'flex';
+    }
+  }
+  function advanceTutorial(){
+    let prevId = currentTutorialDeviceId();
+    if(prevId) setApplianceHighlight(appliances[prevId], 0); // clear the pulsing glow before moving on
+    tutorialStepIndex++;
+    showTutorialStep();
+  }
+  function tutorialCheckDeviceAction(deviceId){
+    if(currentTutorialDeviceId() === deviceId) advanceTutorial();
+  }
+  tutDismissBtn.addEventListener('click', ()=>{ if(currentTutorialUiStep()) advanceTutorial(); });
+  document.getElementById('thermoSlider').addEventListener('input', ()=>tutorialCheckDeviceAction('thermostat'));
+  document.getElementById('hwToggleBtn').addEventListener('click', ()=>tutorialCheckDeviceAction('hotwater'));
+  document.getElementById('dishRunBtn').addEventListener('click', ()=>tutorialCheckDeviceAction('dishwasher'));
+  document.getElementById('laundryRunBtn').addEventListener('click', ()=>tutorialCheckDeviceAction('laundry'));
+  document.getElementById('lightsToggleBtn').addEventListener('click', ()=>tutorialCheckDeviceAction('lights'));
+
+  document.getElementById('start-btn').addEventListener('click', ()=>{
+    tutorialStepIndex = 0;
+    showTutorialStep();
+  });
+  document.getElementById('tutorial-outro-btn').addEventListener('click', ()=>{
+    document.getElementById('tutorial-outro').style.display = 'none';
+    gameStarted = true; // the real 3-day clock/cost starts now, not before
+  });
+
+  // bouncing pointer + pulsing glow on whichever device the current step
+  // targets — reuses the exact same screen-projection math as the
+  // need-alert badges above (project the device's 3D position through the
+  // live camera every frame, since the player can freely orbit).
+  const _tutProjVec = new THREE.Vector3();
+  function updateTutorialPointer(){
+    let id = currentTutorialDeviceId();
+    if(id){
+      tutPointerEl.style.position = 'absolute';
+      setApplianceHighlight(appliances[id], 0.3 + 0.25*Math.sin(performance.now()/300));
+      _tutProjVec.copy(appliances[id].position);
+      _tutProjVec.y += 1.6;
+      _tutProjVec.project(camera);
+      if(_tutProjVec.z > 1){ tutPointerEl.style.display = 'none'; return; }
+      tutPointerEl.style.left = ((_tutProjVec.x*0.5+0.5) * container.clientWidth) + 'px';
+      tutPointerEl.style.top = ((1-(_tutProjVec.y*0.5+0.5)) * container.clientHeight) + 'px';
+      tutPointerEl.style.display = 'block';
+      return;
+    }
+    // UI callout steps point at a 2D HUD/panel element instead of a 3D
+    // appliance — anchor with the element's own viewport rect (switching the
+    // pointer to `position:fixed` so it isn't clipped to #scene-container,
+    // since the comfort bar/rate strip live in the side panel, outside it).
+    let uiStep = currentTutorialUiStep();
+    let targetEl = uiStep && document.getElementById(uiStep.targetEl);
+    if(targetEl){
+      let rect = targetEl.getBoundingClientRect();
+      tutPointerEl.style.position = 'fixed';
+      tutPointerEl.style.left = (rect.left + rect.width/2) + 'px';
+      tutPointerEl.style.top = rect.top + 'px';
+      tutPointerEl.style.display = 'block';
+      return;
+    }
+    tutPointerEl.style.display = 'none';
+  }
+
+  statusEl.textContent = 'rendered — click an appliance to adjust it, click the floor to walk Remy there, drag to orbit, scroll to zoom';
+
+  // ══════════════════════════════════════════════════════════════════════
+  // PHASE B3 — live ticking. frameStep()/tickSimulation() are the exact
+  // Phase A functions (already validated headlessly and via the benchmark
+  // sanity checks) — this just actually starts calling them every frame,
+  // instead of only in the scripted self-test.
+  // ══════════════════════════════════════════════════════════════════════
+  function fmtGameClock(gameTime){
+    let day = Math.floor(gameTime/24)+1;
+    let hod = gameTime%24;
+    let h = Math.floor(hod);
+    let m = Math.floor((hod-h)*60);
+    let ampm = h>=12?'PM':'AM';
+    let h12 = h%12; if(h12===0)h12=12;
+    return 'Day '+day+' · '+h12+':'+String(m).padStart(2,'0')+' '+ampm;
+  }
+  function updateHud(){
+    let clockText = fmtGameClock(state.gameTime);
+    if(state.gameOver) clockText += ' · comfort dropped too low, study ended';
+    else if(state.done) clockText += ' · study complete';
+    document.getElementById('hud-clock').textContent = clockText;
+    let c = Math.round(composite());
+    document.getElementById('hud-comfort-emoji').textContent = scoreEmoji(c);
+    document.getElementById('comfort-bar-fill').style.width = c+'%';
+    document.getElementById('comfort-bar-fill').style.background = scoreBarColor(c);
+    document.getElementById('comfort-tooltip').innerHTML =
+      '<div class="ct-total"><span>Overall comfort</span><span>'+c+'/100</span></div>' +
+      Object.keys(BASE_WEIGHTS).filter(k=>state.devices[WEIGHT_DEVICE[k]]).map(k=>
+        '<div><span>'+WEIGHT_LABEL[k]+'</span><span>'+Math.round(state['c'+k])+'</span></div>'
+      ).join('');
+    let netC = Math.max(0, state.totalCost-state.drSavings);
+    if(CONDITION==='cost'){
+      document.getElementById('hud-metric-label').textContent = 'Cost so far';
+      document.getElementById('hud-metric-value').textContent = '$'+netC.toFixed(2);
+    } else {
+      document.getElementById('hud-metric-label').textContent = 'Energy used';
+      document.getElementById('hud-metric-value').textContent = state.totalKwh.toFixed(2)+' kWh';
+    }
+    // keep the currently-open appliance panel's readout live too (e.g. thermostat
+    // drifting isn't possible, but dish/laundry "running" flipping back off is)
+    if(selectedId) refreshPanel(selectedId);
+  }
+
+  // ── always-visible rate/DR/cost-breakdown panel — reads the same state
+  // fields the HUD and benchmark math already use, no new formulas ──
+  const COST_ROWS = [['HVAC','hvac'],['Hot Water','hw'],['Dishwasher','dish'],['Laundry','laundry'],['Lights','lights']];
+  function updateInfoPanel(){
+    let rate = rateAt(state.gameTime), tier = tierAt(state.gameTime);
+    document.getElementById('info-rate').textContent = '$'+rate.toFixed(2)+'/kWh · '+TOU_LABEL[tier];
+    let nowMarker = document.getElementById('rate-strip-now');
+    if(nowMarker) nowMarker.style.left = ((state.gameTime%24)/24*100)+'%';
+
+    let banner = document.getElementById('dr-banner');
+    if(state.drWindow.active){
+      let onTrack = timeWeightedAvgKw() <= drThresholdKw(state.drWindow.avgOutdoorTemp);
+      banner.style.display = 'block';
+      banner.textContent = '⚡ Power-saving window active — ' + (onTrack ? 'on track to earn a bonus.' : 'use less to earn a bonus.');
+    } else {
+      banner.style.display = 'none';
+    }
+
+    document.getElementById('cost-breakdown').innerHTML = COST_ROWS.map(([label,key])=>
+      '<div class="cost-row"><span>'+label+'</span><span class="cost-amount">$'+(state.costByDevice[key]||0).toFixed(2)+'</span></div>'
+    ).join('');
+  }
+
+  // ── floating need-alert badges — screen-projected from each appliance's
+  // own 3D position, shown whenever that comfort sub-score is low, so trouble
+  // is visible before the participant thinks to check the HUD ──
+  const NEED_ALERT_MAP = { thermostat:'cT', hotwater:'cW', dishwasher:'cD', laundry:'cL', lights:'cLi' };
+  const needAlertEls = {};
+  Object.keys(NEED_ALERT_MAP).forEach(id=>{ needAlertEls[id] = document.getElementById('alert-'+id); });
+  const _needProjVec = new THREE.Vector3();
+  function updateNeedAlerts(){
+    Object.entries(NEED_ALERT_MAP).forEach(([id,scoreKey])=>{
+      let el = needAlertEls[id];
+      if(state[scoreKey] >= 60){ el.style.display = 'none'; return; }
+      _needProjVec.copy(appliances[id].position);
+      _needProjVec.y += 1.3;
+      _needProjVec.project(camera);
+      if(_needProjVec.z > 1){ el.style.display = 'none'; return; }
+      el.style.left = ((_needProjVec.x*0.5+0.5) * container.clientWidth) + 'px';
+      el.style.top = ((1-(_needProjVec.y*0.5+0.5)) * container.clientHeight) + 'px';
+      el.style.display = 'block';
+    });
+  }
+
+  // day/night brightness + color-temperature tinting: sun color blends
+  // night-blue -> dusk-orange -> noon-white as `daylight` rises, and back down
+  // symmetrically on the way to evening, so sunrise/sunset both read warm.
+  const sunBaseIntensity = 1.1, fillBaseIntensity = 0.55;
+  const COLOR_NOON = new THREE.Color(0xfff2d9);
+  const COLOR_DUSK = new THREE.Color(0xff8c42);
+  const COLOR_NIGHT = new THREE.Color(0x6b7ec4);
+  const _tintColor = new THREE.Color();
+  function updateDayNightLighting(){
+    // arrange mode is a positioning tool, not the game — always fully bright
+    // regardless of game time, so nothing is ever hard to see while dragging
+    let hod = ARRANGE_MODE ? 12 : state.gameTime % 24;
+    let daylight = Math.max(0, Math.cos((hod-12)/12*Math.PI)); // 1 at noon, 0 by ~6am/6pm, clamped through night
+    sun.intensity = 0.15 + daylight*sunBaseIntensity;
+    fill.intensity = 0.25 + daylight*fillBaseIntensity;
+    let bg = 0.04 + daylight*0.5;
+    scene.background.setRGB(bg, bg*1.1, bg*1.6);
+
+    if(daylight >= 0.5){
+      _tintColor.copy(COLOR_DUSK).lerp(COLOR_NOON, (daylight-0.5)/0.5);
+    } else {
+      _tintColor.copy(COLOR_NIGHT).lerp(COLOR_DUSK, daylight/0.5);
+    }
+    sun.color.copy(_tintColor);
+  }
+
+  function updateSpeedButtons(activeMult){
+    document.getElementById('btn-pause').classList.toggle('active', activeMult===0);
+    document.getElementById('btn-1x').classList.toggle('active', activeMult===1);
+    document.getElementById('btn-2x').classList.toggle('active', activeMult===2);
+    document.getElementById('btn-3x').classList.toggle('active', activeMult===3);
+  }
+  window.updateSpeedButtons = updateSpeedButtons; // the classic script's end-of-day report also needs this, but it's module-scoped so isn't visible there by default
+  document.getElementById('btn-pause').addEventListener('click',()=>{
+    if(state.done||state.gameOver)return;
+    if(!state.paused){ state.paused=true; logEvent('participant_adjustment','pause',{}); }
+    updateSpeedButtons(0);
+  });
+  [1,2,3].forEach(mult=>{
+    document.getElementById('btn-'+mult+'x').addEventListener('click',()=>{
+      if(state.done||state.gameOver)return;
+      if(state.paused){ state.paused=false; logEvent('participant_adjustment','resume',{}); }
+      setSpeed(mult);
+      updateSpeedButtons(mult);
+    });
+  });
+
+  const clock = new THREE.Clock();
+  function animate(){
+    requestAnimationFrame(animate);
+    let dt = Math.min(clock.getDelta(), 0.1); // clamp so a tab-background hitch can't make the avatar teleport
+    if(gameStarted) frameStep(performance.now()); // the real Phase A tick loop — drives state.gameTime forward; held off until the start screen is dismissed
+    updateHud();
+    maybeShowEndScreen();
+    maybeShowDayEndScreen();
+    updateInfoPanel();
+    updateNeedAlerts();
+    updateDayNightLighting();
+    updateAvatar(dt);
+    controls.update();
+    updateWallVisibility();
+    updateRoofVisibility();
+    updateTutorialPointer();
+    renderer.render(scene, camera);
+    labelRenderer.render(scene, camera);
+  }
+  animate();
+}
+</script>
+</body>
+</html>

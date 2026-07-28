@@ -194,7 +194,7 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
 </div>
 
 <!-- "Happy Adventure (Loop)" by TinyWorlds, CC0 (public domain) — https://opengameart.org/content/happy-adventure-loop -->
-<audio id="bg-music" loop preload="auto" src="/UI_Assets/Sounds/happy-adventure-loop.mp3"></audio>
+<audio id="bg-music" loop preload="auto" src="UI_Assets/Sounds/happy-adventure-loop.mp3"></audio>
 
 <div id="hud-bar">
   <div class="hud-stat"><span class="hud-label">Day / Time</span><span class="hud-value" id="hud-clock">Day 1 · 12:00 AM</span></div>
@@ -1078,9 +1078,9 @@ async function initScene(){
   statusEl.textContent = 'loading house + furniture…';
 
   // ── Asset loading infrastructure ─────────────────────────────────────────
-  const PSX_BASE = '/3D Models/PSX modular house interior pack/';
-  const FURNITURE_BASE = '/3D Models/Low Poly Furniture/';
-  const MODELS_BASE = '/3D Models/';
+  const PSX_BASE = '3D Models/PSX modular house interior pack/';
+  const FURNITURE_BASE = '3D Models/Low Poly Furniture/';
+  const MODELS_BASE = '3D Models/';
 
   const draco = new DRACOLoader();
   draco.setDecoderPath('https://unpkg.com/three@0.185.1/examples/jsm/libs/draco/');

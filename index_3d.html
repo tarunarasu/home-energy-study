@@ -22,6 +22,8 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
 #scene-status{position:absolute;top:8px;left:12px;font-size:11px;color:rgba(255,255,255,0.4);font-family:'Courier New',monospace;pointer-events:none}
 #css2d-layer{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden}
 .room-label{font-size:16px;font-weight:600;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:0.5px;pointer-events:none;white-space:nowrap}
+.appliance-label{display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:#fff;background:rgba(15,23,42,0.72);border:1px solid rgba(255,255,255,0.18);border-radius:20px;padding:4px 10px 4px 6px;pointer-events:none;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.35)}
+.appliance-label-emoji{font-size:15px;line-height:1}
 #need-alerts-layer{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden}
 .need-alert{position:absolute;transform:translate(-50%,-100%);font-size:28px;line-height:1;display:none;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.7));animation:need-bob 1.4s ease-in-out infinite}
 @keyframes need-bob{0%,100%{margin-top:0}50%{margin-top:-5px}}
@@ -31,6 +33,7 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
    to happen) plus a bouncing pointer projected onto whichever device is
    the current step's target ── */
 #tutorial-step-card{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:20;background:linear-gradient(180deg,#1c2a4a,#101827);border:2px solid rgba(74,222,128,0.55);border-radius:18px;padding:14px 26px;max-width:min(88%,480px);text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.5);pointer-events:none}
+.tut-guide-badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#fbbf24;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.4);border-radius:20px;padding:3px 12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px}
 .tut-emoji{font-size:30px;margin-bottom:2px}
 .tut-title{font-size:21px;font-weight:600;color:#fff;margin-bottom:4px}
 .tut-text{font-size:15px;color:rgba(255,255,255,0.75);line-height:1.4}
@@ -195,6 +198,7 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
 
 <!-- "Happy Adventure (Loop)" by TinyWorlds, CC0 (public domain) — https://opengameart.org/content/happy-adventure-loop -->
 <audio id="bg-music" loop preload="auto" src="UI_Assets/Sounds/happy-adventure-loop.mp3"></audio>
+<audio id="tutorial-voice" preload="auto"></audio>
 
 <div id="hud-bar">
   <div class="hud-stat"><span class="hud-label">Day / Time</span><span class="hud-value" id="hud-clock">Day 1 · 12:00 AM</span></div>
@@ -209,6 +213,7 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
   <div class="hud-stat"><span class="hud-label" id="hud-metric-label">Cost so far</span><span class="hud-value" id="hud-metric-value">$0.00</span></div>
   <div class="hud-speed">
     <button id="btn-mute" class="hud-speed-btn" title="Mute/unmute music">🔊</button>
+    <button id="btn-voice-mute" class="hud-speed-btn" title="Mute/unmute Sparky's voice">🗣️</button>
     <button id="btn-pause" class="hud-speed-btn">Pause</button>
     <button id="btn-1x" class="hud-speed-btn active">1x</button>
     <button id="btn-2x" class="hud-speed-btn">2x</button>
@@ -218,6 +223,7 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
 <div id="game-layout">
   <div id="scene-container"><div id="scene-status">loading…</div><div id="css2d-layer"></div>
     <div id="tutorial-step-card" style="display:none">
+      <div class="tut-guide-badge">⚡ Sparky</div>
       <div class="tut-emoji" id="tut-step-emoji">🌡️</div>
       <div class="tut-title" id="tut-step-title">Thermostat</div>
       <div class="tut-text" id="tut-step-text"></div>
@@ -875,6 +881,16 @@ document.getElementById('btn-mute').addEventListener('click', ()=>{
   document.getElementById('btn-mute').textContent = bgMusic.muted ? '🔇' : '🔊';
 });
 
+// ── Sparky's tutorial voice — pre-rendered neural-voice lines (edge-tts,
+// en-US-AnaNeural), one per tutorial step, played via showTutorialStep()
+// below. Own mute toggle since a player might want music but not voice
+// (or vice versa).
+const tutorialVoice = document.getElementById('tutorial-voice');
+document.getElementById('btn-voice-mute').addEventListener('click', ()=>{
+  tutorialVoice.muted = !tutorialVoice.muted;
+  document.getElementById('btn-voice-mute').textContent = tutorialVoice.muted ? '🔇' : '🗣️';
+});
+
 function downloadCSV(){
   let blob = new Blob([buildCSV()], {type:'text/csv'});
   let url = URL.createObjectURL(blob);
@@ -1435,10 +1451,37 @@ async function initScene(){
   const appliances = {};
   const applianceMeshes = [];
 
+  // icon + friendly name shown above each interactive appliance at all
+  // times (not just during the tutorial), so players don't have to remember
+  // what each device is once the tutorial's one-time callouts are gone
+  const APPLIANCE_LABELS = {
+    thermostat: { emoji:'🌡️', name:'Thermostat' },
+    hotwater:   { emoji:'🚿', name:'Hot Water' },
+    dishwasher: { emoji:'🍽️', name:'Dishwasher' },
+    laundry:    { emoji:'👕', name:'Laundry' },
+    lights:     { emoji:'💡', name:'Lights' },
+  };
+
   function tagAppliance(obj, id){
     obj.userData.applianceId = id;
     obj.traverse(o=>{ if(o.isMesh){ o.userData.applianceId = id; applianceMeshes.push(o); } });
     appliances[id] = obj;
+
+    const info = APPLIANCE_LABELS[id];
+    if(info){
+      const div = document.createElement('div');
+      div.className = 'appliance-label';
+      div.innerHTML = `<span class="appliance-label-emoji">${info.emoji}</span><span>${info.name}</span>`;
+      const label = new CSS2DObject(div);
+      // anchor just above the object's own geometry, computed from its
+      // world bounding box (already fully positioned/scaled at this point
+      // for every appliance) rather than a hand-tuned per-device constant,
+      // so it stays correct if any appliance's model/scale ever changes
+      const box = new THREE.Box3().setFromObject(obj);
+      const localTop = box.max.y - obj.position.y;
+      label.position.set(0, localTop + 0.3, 0);
+      obj.add(label); // child of the appliance, so it follows arrange-mode repositioning automatically
+    }
   }
 
   // simple primitives for the two schematic/utility appliances that don't
@@ -2286,13 +2329,14 @@ async function initScene(){
   // simulated/fake interaction) — "try it yourself", not just "watch me".
   // ══════════════════════════════════════════════════════════════════════
   const TUTORIAL_DEVICE_STEPS = [
-    { id:'lights',      emoji:'💡', title:'Lights',      text:"Click the glowing lamp, then press Toggle to turn the lights on or off!" },
-    { id:'thermostat', emoji:'🌡️', title:'Thermostat', text:"Click the glowing thermostat, then drag the slider to change the temperature!" },
-    { id:'hotwater',    emoji:'🚿', title:'Hot Water',   text:"Click the glowing hot water tank, then press Toggle to turn it on or off!" },
-    { id:'dishwasher',  emoji:'🍽️', title:'Dishwasher',  text:"Click the glowing dishwasher, then press Run now to start washing dishes!" },
-    { id:'laundry',     emoji:'👕', title:'Laundry',     text:"Click the glowing washing machine, then press Run now to start a load!" },
+    { id:'lights',      emoji:'💡', title:'Lights',      text:"Hi, I'm Sparky! I'll help you learn the ropes around here. Let's start simple — see that glowing lamp? Click it, then press Toggle to turn the lights on or off!", voice:'sparky_lights.mp3' },
+    { id:'thermostat', emoji:'🌡️', title:'Thermostat', text:"Nice work! Now let's check the thermostat. Click it, then drag the slider to change the temperature!", voice:'sparky_thermostat.mp3' },
+    { id:'hotwater',    emoji:'🚿', title:'Hot Water',   text:"Great job! Next up is the hot water tank. Click it, then press Toggle to turn it on or off!", voice:'sparky_hotwater.mp3' },
+    { id:'dishwasher',  emoji:'🍽️', title:'Dishwasher',  text:"You're getting good at this! Click the glowing dishwasher, then press Run now to start washing dishes!", voice:'sparky_dishwasher.mp3' },
+    { id:'laundry',     emoji:'👕', title:'Laundry',     text:"Almost done! Click the washing machine, then press Run now to start a load!", voice:'sparky_laundry.mp3' },
   ];
   const TUTORIAL_MOVE_STEP = TUTORIAL_DEVICE_STEPS.length; // one extra step, after all the devices
+  const TUTORIAL_MOVE_VOICE = 'sparky_move.mp3';
   // Two more callout steps after the move step, pointing at the comfort bar
   // and the rate-schedule strip — these are 2D HUD/panel elements, not 3D
   // appliances, so they anchor to the target DOM element's own bounding box
@@ -2300,8 +2344,8 @@ async function initScene(){
   // on a simple "Got it" dismissal since there's no device interaction to
   // gate on for a piece of UI you just look at.
   const TUTORIAL_UI_STEPS = [
-    { targetEl:'hud-comfort-stat', emoji:'😊', title:'Comfort score', text:"This bar shows how comfortable your household is right now. Hover over it any time to see the exact number and a breakdown by device." },
-    { targetEl:'rate-strip', emoji:'⚡', title:'Electricity rates', text:"Electricity costs change by time of day. Blue hours are off-peak (cheapest), gray is regular, red is peak (most expensive) — run things during blue hours to save money!" },
+    { targetEl:'hud-comfort-stat', emoji:'😊', title:'Comfort score', text:"See this bar? It shows how comfortable your household is right now. Hover over it anytime for the exact number!", voice:'sparky_comfort.mp3' },
+    { targetEl:'rate-strip', emoji:'⚡', title:'Electricity rates', text:"One last tip — electricity prices change throughout the day. Blue hours are cheapest, gray is regular, and red is most expensive. Try to run things during the blue hours to save money!", voice:'sparky_rate.mp3' },
   ];
   const TUTORIAL_UI_STEP_START = TUTORIAL_MOVE_STEP + 1;
   const TUTORIAL_TOTAL_STEPS = TUTORIAL_UI_STEP_START + TUTORIAL_UI_STEPS.length;
@@ -2323,6 +2367,12 @@ async function initScene(){
     let idx = tutorialStepIndex - TUTORIAL_UI_STEP_START;
     return (idx>=0 && idx<TUTORIAL_UI_STEPS.length) ? TUTORIAL_UI_STEPS[idx] : null;
   }
+  const tutorialVoiceEl = document.getElementById('tutorial-voice'); // module scope can't see the classic-script `tutorialVoice` const, so grab it directly here
+  function playTutorialVoice(file){
+    if(!file) return;
+    tutorialVoiceEl.src = 'UI_Assets/Sounds/tutorial_voice/' + file;
+    tutorialVoiceEl.play().catch(()=>{}); // ignore — only fails outside a user gesture, and every step advance is gesture-triggered
+  }
   function showTutorialStep(){
     tutDismissBtn.style.display = 'none';
     if(tutorialStepIndex < TUTORIAL_DEVICE_STEPS.length){
@@ -2332,12 +2382,14 @@ async function initScene(){
       tutTextEl.textContent = step.text;
       tutProgressEl.textContent = `Step ${tutorialStepIndex+1} of ${TUTORIAL_TOTAL_STEPS}`;
       tutStepCard.style.display = 'block';
+      playTutorialVoice(step.voice);
     } else if(tutorialStepIndex === TUTORIAL_MOVE_STEP){
       tutEmojiEl.textContent = '🚶';
       tutTitleEl.textContent = 'Get moving!';
-      tutTextEl.textContent = 'Click anywhere on the floor to walk Remy there!';
+      tutTextEl.textContent = 'One more thing — click anywhere on the floor, and Remy will walk right there!';
       tutProgressEl.textContent = `Step ${TUTORIAL_MOVE_STEP+1} of ${TUTORIAL_TOTAL_STEPS}`;
       tutStepCard.style.display = 'block';
+      playTutorialVoice(TUTORIAL_MOVE_VOICE);
     } else if(currentTutorialUiStep()){
       let step = currentTutorialUiStep();
       tutEmojiEl.textContent = step.emoji;
@@ -2346,6 +2398,7 @@ async function initScene(){
       tutProgressEl.textContent = `Step ${tutorialStepIndex+1} of ${TUTORIAL_TOTAL_STEPS}`;
       tutStepCard.style.display = 'block';
       tutDismissBtn.style.display = 'inline-block';
+      playTutorialVoice(step.voice);
     } else {
       // tutorial fully done — hand off to its own outro screen
       tutStepCard.style.display = 'none';

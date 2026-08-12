@@ -32,22 +32,27 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
    clickable underneath, since each step needs the real device interaction
    to happen) plus a bouncing pointer projected onto whichever device is
    the current step's target ── */
-#tutorial-step-card{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:20;background:linear-gradient(180deg,#1c2a4a,#101827);border:2px solid rgba(74,222,128,0.55);border-radius:18px;padding:14px 26px;max-width:min(88%,480px);text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.5);pointer-events:none}
+/* Sparky stands OUTSIDE the card, to its right — not inside it — on every
+   notice he appears on (tutorial, DR modal, live toast). The outer element
+   is just a positioning flex row (no background of its own); the actual
+   card chrome (gradient/border/padding) lives on .tut-card-body, sized to
+   content, with Sparky as a sibling beside it. */
+#tutorial-step-card{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:12px;pointer-events:none}
+.tut-card-body{background:linear-gradient(180deg,#1c2a4a,#101827);border:2px solid rgba(74,222,128,0.55);border-radius:18px;padding:14px 26px;max-width:min(88%,420px);text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.5)}
 /* Same compact in-scene card look as the tutorial, not the heavy full-screen
    .game-overlay treatment — pointer-events:auto (unlike the tutorial card)
    since this one should actually hold focus while the sim is paused. */
-#dr-event-screen{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:21;background:linear-gradient(180deg,#1c2a4a,#101827);border:2px solid rgba(147,197,253,0.6);border-radius:18px;padding:16px 26px;max-width:min(92%,420px);text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.5);pointer-events:auto}
+#dr-event-screen{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:21;display:flex;align-items:center;gap:12px;pointer-events:auto}
+.dr-card-body{background:linear-gradient(180deg,#1c2a4a,#101827);border:2px solid rgba(147,197,253,0.6);border-radius:18px;padding:16px 26px;max-width:min(88%,380px);text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.5)}
 /* Sparky's figure — a real illustrated character (UI_Assets/Sparky/sparky.png,
-   transparent cutout), used everywhere Sparky appears: the tutorial card
-   header, notification toasts, and the DR event modal. No frame/background
-   — it's a real character cutout, so it's shown at full size with just a
-   drop-shadow for depth, deliberately taller than its container so it
-   reads as a figure standing beside the UI rather than an icon inside it. */
+   transparent cutout), used everywhere Sparky appears: the tutorial card,
+   notification toasts, and the DR event modal. No frame/background — it's
+   a real character cutout, shown at full size with just a drop-shadow for
+   depth, standing beside the card rather than boxed inside it. */
 .sparky-figure{display:block;flex-shrink:0;pointer-events:none;filter:drop-shadow(0 6px 12px rgba(0,0,0,0.5))}
 .sparky-figure-lg{height:110px}
 .sparky-figure-xl{height:150px}
-.tut-guide-header{display:flex;flex-direction:column;align-items:center;gap:5px;margin-bottom:6px}
-.tut-guide-name{font-size:12px;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:1px}
+.tut-guide-name{font-size:12px;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
 .tut-emoji{font-size:30px;margin-bottom:2px}
 .tut-title{font-size:21px;font-weight:600;color:#fff;margin-bottom:4px}
 .tut-text{font-size:15px;color:rgba(255,255,255,0.75);line-height:1.4}
@@ -267,26 +272,26 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
 <div id="game-layout">
   <div id="scene-container"><div id="scene-status">loading…</div><div id="css2d-layer"></div>
     <div id="tutorial-step-card" style="display:none">
-      <div class="tut-guide-header">
-        <img class="sparky-figure sparky-figure-lg" src="UI_Assets/Sparky/sparky.png" alt="Sparky">
+      <div class="tut-card-body">
         <div class="tut-guide-name">Sparky</div>
+        <div class="tut-emoji" id="tut-step-emoji">🌡️</div>
+        <div class="tut-title" id="tut-step-title">Thermostat</div>
+        <div class="tut-text" id="tut-step-text"></div>
+        <div class="tut-progress" id="tut-step-progress"></div>
+        <button class="tut-dismiss-btn" id="tut-dismiss-btn" style="display:none">Got it →</button>
       </div>
-      <div class="tut-emoji" id="tut-step-emoji">🌡️</div>
-      <div class="tut-title" id="tut-step-title">Thermostat</div>
-      <div class="tut-text" id="tut-step-text"></div>
-      <div class="tut-progress" id="tut-step-progress"></div>
-      <button class="tut-dismiss-btn" id="tut-dismiss-btn" style="display:none">Got it →</button>
+      <img class="sparky-figure sparky-figure-xl" src="UI_Assets/Sparky/sparky.png" alt="Sparky">
     </div>
     <div id="dr-event-screen" style="display:none">
-      <div class="tut-guide-header">
-        <img class="sparky-figure sparky-figure-lg" src="UI_Assets/Sparky/sparky.png" alt="Sparky">
+      <div class="dr-card-body">
         <div class="tut-guide-name">Sparky</div>
+        <div class="tut-emoji" id="dr-event-emoji">⚡</div>
+        <div class="tut-title" id="dr-event-title"></div>
+        <div class="tut-text" id="dr-event-subtitle"></div>
+        <div class="dr-tips" id="dr-event-tips"></div>
+        <button class="tut-dismiss-btn" id="dr-event-continue-btn">Got it →</button>
       </div>
-      <div class="tut-emoji" id="dr-event-emoji">⚡</div>
-      <div class="tut-title" id="dr-event-title"></div>
-      <div class="tut-text" id="dr-event-subtitle"></div>
-      <div class="dr-tips" id="dr-event-tips"></div>
-      <button class="tut-dismiss-btn" id="dr-event-continue-btn">Got it →</button>
+      <img class="sparky-figure sparky-figure-xl" src="UI_Assets/Sparky/sparky.png" alt="Sparky">
     </div>
     <div id="tutorial-pointer">👇</div>
     <div id="need-alerts-layer">
@@ -2616,7 +2621,7 @@ async function initScene(){
       document.getElementById('dr-event-tips').innerHTML = '';
       playSparkyVoice(credit>=2?'sparky_dr_full.mp3':credit>0?'sparky_dr_partial.mp3':'sparky_dr_missed.mp3', 'sparky_notify');
     }
-    drEventScreenEl.style.display = 'block';
+    drEventScreenEl.style.display = 'flex';
   }
   document.getElementById('dr-event-continue-btn').addEventListener('click', ()=>{
     drEventScreenEl.style.display = 'none';
@@ -2632,14 +2637,14 @@ async function initScene(){
       tutTitleEl.textContent = step.title;
       tutTextEl.textContent = step.text;
       tutProgressEl.textContent = `Step ${tutorialStepIndex+1} of ${TUTORIAL_TOTAL_STEPS}`;
-      tutStepCard.style.display = 'block';
+      tutStepCard.style.display = 'flex';
       playTutorialVoice(step.voice);
     } else if(tutorialStepIndex === TUTORIAL_MOVE_STEP){
       tutEmojiEl.textContent = '🚶';
       tutTitleEl.textContent = 'Get moving!';
       tutTextEl.textContent = 'One more thing — click anywhere on the floor, and Remy will walk right there!';
       tutProgressEl.textContent = `Step ${TUTORIAL_MOVE_STEP+1} of ${TUTORIAL_TOTAL_STEPS}`;
-      tutStepCard.style.display = 'block';
+      tutStepCard.style.display = 'flex';
       playTutorialVoice(TUTORIAL_MOVE_VOICE);
     } else if(currentTutorialUiStep()){
       let step = currentTutorialUiStep();
@@ -2647,7 +2652,7 @@ async function initScene(){
       tutTitleEl.textContent = step.title;
       tutTextEl.textContent = step.text;
       tutProgressEl.textContent = `Step ${tutorialStepIndex+1} of ${TUTORIAL_TOTAL_STEPS}`;
-      tutStepCard.style.display = 'block';
+      tutStepCard.style.display = 'flex';
       tutDismissBtn.style.display = 'inline-block';
       playTutorialVoice(step.voice);
     } else {

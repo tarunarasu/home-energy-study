@@ -39,7 +39,7 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
    clearly against both the card and the 3D scene behind it. */
 .sparky-avatar{display:flex;align-items:center;justify-content:center;border-radius:50%;background:#0f1b33;border:2.5px solid #fbbf24;box-shadow:0 3px 14px rgba(251,191,36,0.45);flex-shrink:0}
 .sparky-avatar-lg{width:60px;height:60px;font-size:36px}
-.sparky-avatar-md{width:44px;height:44px;font-size:26px}
+.sparky-avatar-xl{width:78px;height:78px;font-size:47px;border-width:3px}
 .tut-guide-header{display:flex;flex-direction:column;align-items:center;gap:5px;margin-bottom:6px}
 .tut-guide-name{font-size:12px;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:1px}
 .tut-emoji{font-size:30px;margin-bottom:2px}
@@ -53,9 +53,17 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
 /* ── Sparky's live-game notification toasts — DR events, rate-tier changes,
    overdue-device reminders. Deliberately opposite corner from the tutorial
    card (top-center) so the two never visually collide; non-blocking
-   (pointer-events:none) since they're meant to be glanced at, not acted on. */
-#sparky-toast{position:absolute;top:14px;right:14px;z-index:25;display:flex;gap:10px;align-items:flex-start;background:linear-gradient(180deg,#1c2a4a,#101827);border:2px solid var(--sparky-accent,#fbbf24);border-radius:16px;padding:12px 16px;max-width:300px;box-shadow:0 10px 26px rgba(0,0,0,0.5);pointer-events:none;opacity:0;transform:translateX(16px);transition:opacity .25s ease, transform .25s ease}
+   (pointer-events:none) since they're meant to be glanced at, not acted on.
+   Sparky sits on the right with the message rendered as a comic speech
+   bubble whose tail points back at his mouth — his position here is a
+   fixed top-right corner for now, but the toast/bubble/tail are all built
+   as one self-contained unit so where Sparky anchors can be changed later
+   (e.g. per notification type) without touching the bubble styling. */
+#sparky-toast{position:absolute;top:14px;right:14px;z-index:25;display:flex;align-items:center;gap:0;pointer-events:none;opacity:0;transform:translateX(16px);transition:opacity .25s ease, transform .25s ease}
 #sparky-toast.show{opacity:1;transform:translateX(0)}
+.sparky-toast-bubble{position:relative;background:linear-gradient(180deg,#1c2a4a,#101827);border:2px solid var(--sparky-accent,#fbbf24);border-radius:18px;padding:12px 18px;max-width:260px;box-shadow:0 10px 26px rgba(0,0,0,0.5);margin-right:14px}
+.sparky-toast-bubble::before{content:"";position:absolute;top:50%;right:-13px;transform:translateY(-50%);width:0;height:0;border-top:10px solid transparent;border-bottom:10px solid transparent;border-left:13px solid var(--sparky-accent,#fbbf24)}
+.sparky-toast-bubble::after{content:"";position:absolute;top:50%;right:-9.5px;transform:translateY(-50%);width:0;height:0;border-top:8px solid transparent;border-bottom:8px solid transparent;border-left:10px solid #101827}
 .sparky-toast-name{font-size:10px;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px}
 .sparky-toast-title{font-size:14px;font-weight:700;color:#fff;margin-bottom:3px}
 .sparky-toast-text{font-size:13px;color:rgba(255,255,255,0.75);line-height:1.4}
@@ -107,10 +115,14 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
 /* ── Start / end screen overlays — a full-viewport Sims-style takeover,
    shown before the study begins and again when it ends ── */
 .game-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(30,41,59,0.97),rgba(6,9,18,0.99));padding:24px}
-.overlay-card{background:linear-gradient(180deg,#1c2a4a,#101827);border:1px solid rgba(255,255,255,0.12);border-radius:26px;padding:38px 42px;max-width:520px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08);text-align:center;max-height:88vh;overflow-y:auto}
+.overlay-card{position:relative;background:linear-gradient(180deg,#1c2a4a,#101827);border:1px solid rgba(255,255,255,0.12);border-radius:26px;padding:38px 42px;max-width:520px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08);text-align:center;max-height:88vh;overflow-y:auto}
 .overlay-emoji{font-size:68px;margin-bottom:12px;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.35))}
 .overlay-title{font-size:40px;font-weight:600;color:#fff;margin-bottom:12px;letter-spacing:0.2px}
 .overlay-subtitle{font-size:18px;color:rgba(255,255,255,0.65);line-height:1.55;margin-bottom:24px}
+#fireworks-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.dr-tips{text-align:left;margin:4px 0 22px;display:flex;flex-direction:column;gap:8px}
+.dr-tip-row{background:rgba(255,255,255,0.06);border:1px solid rgba(147,197,253,0.25);border-radius:10px;padding:11px 15px;font-size:16px;color:rgba(255,255,255,0.9);line-height:1.4}
+.dr-tip-row.dr-tip-main{background:rgba(147,197,253,0.14);border-color:rgba(147,197,253,0.5);font-weight:600}
 .game-btn{font-family:'Fredoka',sans-serif;background:linear-gradient(180deg,#4ade80,#22c55e);color:#052e12;border:none;border-radius:16px;padding:16px 34px;font-size:22px;font-weight:600;cursor:pointer;box-shadow:0 4px 0 #15803d, 0 6px 14px rgba(0,0,0,0.3);transition:transform .08s ease;margin:4px}
 .game-btn-secondary{font-family:'Fredoka',sans-serif;background:transparent;color:rgba(255,255,255,0.55);border:none;padding:10px 18px;font-size:15px;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:3px;margin:4px;display:block}
 .game-btn-secondary:hover{color:rgba(255,255,255,0.8)}
@@ -206,7 +218,20 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
   </div>
 </div>
 
+<div class="game-overlay" id="dr-event-screen" style="display:none">
+  <div class="overlay-card">
+    <div class="sparky-avatar sparky-avatar-xl" id="dr-event-avatar" style="margin:0 auto 10px"></div>
+    <div class="tut-guide-name" style="margin-bottom:10px">Sparky</div>
+    <div class="overlay-emoji" id="dr-event-emoji">⚡</div>
+    <div class="overlay-title" id="dr-event-title"></div>
+    <div class="overlay-subtitle" id="dr-event-subtitle"></div>
+    <div class="dr-tips" id="dr-event-tips"></div>
+    <button class="game-btn" id="dr-event-continue-btn">Got it →</button>
+  </div>
+</div>
+
 <div class="game-overlay" id="end-screen" style="display:none">
+  <canvas id="fireworks-canvas"></canvas>
   <div class="overlay-card">
     <div class="overlay-emoji" id="end-emoji">🎉</div>
     <div class="overlay-title" id="end-title">Study complete!</div>
@@ -266,12 +291,12 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
       <div class="need-alert" id="alert-lights">💡</div>
     </div>
     <div id="sparky-toast" style="display:none">
-      <div class="sparky-avatar sparky-avatar-md" id="sparky-toast-portrait"></div>
-      <div class="sparky-toast-body">
+      <div class="sparky-toast-bubble">
         <div class="sparky-toast-name">Sparky</div>
         <div class="sparky-toast-title" id="sparky-toast-title"></div>
         <div class="sparky-toast-text" id="sparky-toast-text"></div>
       </div>
+      <div class="sparky-avatar sparky-avatar-xl" id="sparky-toast-portrait"></div>
     </div>
   </div>
   <div id="control-panel">
@@ -970,6 +995,49 @@ function downloadCSV(){
 }
 document.getElementById('end-download-btn').addEventListener('click', downloadCSV);
 
+// ── Celebratory fireworks for a successful study completion — a small
+// self-contained canvas particle sim, entirely separate from the Three.js
+// scene so it can't interfere with the WebGL renderer. Starts once when
+// the end screen shows and just keeps looping (the end screen is terminal,
+// there's nothing to resume after it).
+let fireworksAnimId = null;
+function startFireworks(){
+  if(fireworksAnimId) return; // already running
+  let canvas = document.getElementById('fireworks-canvas');
+  let ctx = canvas.getContext('2d');
+  function resize(){ canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+  const COLORS = ['#fbbf24','#f87171','#38bdf8','#4ade80','#a78bfa','#fb923c','#f472b6'];
+  let particles = [];
+  function spawnBurst(){
+    let x = canvas.width * (0.15 + Math.random()*0.7);
+    let y = canvas.height * (0.15 + Math.random()*0.4);
+    let color = COLORS[Math.floor(Math.random()*COLORS.length)];
+    let count = 34;
+    for(let i=0;i<count;i++){
+      let angle = (Math.PI*2*i)/count + Math.random()*0.2;
+      let speed = 1.6 + Math.random()*2.4;
+      particles.push({x,y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,alpha:1,color});
+    }
+  }
+  let lastBurst = 0;
+  function frame(t){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    if(t-lastBurst > 850){ spawnBurst(); lastBurst = t; }
+    particles.forEach(p=>{
+      p.x += p.vx; p.y += p.vy; p.vy += 0.035; p.alpha -= 0.011;
+      ctx.globalAlpha = Math.max(0,p.alpha);
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x,p.y,2.4,0,Math.PI*2); ctx.fill();
+    });
+    particles = particles.filter(p=>p.alpha>0);
+    ctx.globalAlpha = 1;
+    fireworksAnimId = requestAnimationFrame(frame);
+  }
+  fireworksAnimId = requestAnimationFrame(frame);
+}
+
 function maybeShowEndScreen(){
   if(endScreenShown || (!state.done && !state.gameOver)) return;
   endScreenShown = true;
@@ -1006,6 +1074,7 @@ function maybeShowEndScreen(){
 
   document.getElementById('end-code').textContent = 'Completion code: ' + generateCode();
   document.getElementById('end-screen').style.display = 'flex';
+  if(!state.gameOver) startFireworks(); // only for the genuine success case, not the comfort-failure ending
 }
 
 // ── End-of-day report — fires once per completed day (see the day-boundary
@@ -2512,6 +2581,65 @@ async function initScene(){
       }, 300); // matches the CSS transition duration
     }, 6000);
   }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // DR event screen — a blocking overlay (pauses the sim, like the
+  // day-end report) instead of a toast, since a demand-response window is
+  // something to actually act on: it gives a concrete thermostat target
+  // (drTargetSetpoint, already used by the benchmark math) and a
+  // turn-off/keep-off tip for every appliance the participant has enabled,
+  // based on its exact current state at the moment the window opens.
+  // ══════════════════════════════════════════════════════════════════════
+  const drEventScreenEl = document.getElementById('dr-event-screen');
+  document.getElementById('dr-event-avatar').innerHTML = SPARKY_SVG;
+  const DEVICE_ACTION_TIPS = {
+    hotwater: (on)=> on ? '🚿 Hot water is on — turn it off if you can.' : '🚿 Hot water is already off — keep it that way.',
+    dishwasher: (running)=> running ? "🍽️ The dishwasher is running — let it finish, but hold off starting another load." : '🍽️ Keep the dishwasher off for now.',
+    laundry: (running)=> running ? "👕 The washing machine is running — let it finish, but hold off starting another load." : '👕 Keep the laundry off for now.',
+    lights: (on)=> on ? "💡 Turn off the lights if you don't need them right now." : '💡 Lights are already off — nice.',
+  };
+  function drApplianceTips(){
+    let rows = [];
+    if(state.devices.thermostat){
+      let target = drTargetSetpoint(state.drWindow.avgOutdoorTemp);
+      let duration = state.drWindow.event.endHour - state.drWindow.event.startHour;
+      rows.push('<div class="dr-tip-row dr-tip-main">🌡️ Set your thermostat to '+target+'°F for the next '+duration+' hours.</div>');
+    }
+    if(state.devices.hotwater) rows.push('<div class="dr-tip-row">'+DEVICE_ACTION_TIPS.hotwater(state.hwOn)+'</div>');
+    if(state.devices.dishwasher) rows.push('<div class="dr-tip-row">'+DEVICE_ACTION_TIPS.dishwasher(state.dish.running)+'</div>');
+    if(state.devices.laundry) rows.push('<div class="dr-tip-row">'+DEVICE_ACTION_TIPS.laundry(state.laundry.running)+'</div>');
+    if(state.devices.lights) rows.push('<div class="dr-tip-row">'+DEVICE_ACTION_TIPS.lights(state.lightsOn)+'</div>');
+    return rows.join('');
+  }
+  function showDrEventScreen(kind, data){
+    state.paused = true;
+    window.updateSpeedButtons(0);
+    if(kind === 'start'){
+      document.getElementById('dr-event-emoji').textContent = '⚡';
+      document.getElementById('dr-event-title').textContent = 'Power-saving window started!';
+      document.getElementById('dr-event-subtitle').textContent = "Electricity use matters right now — here's what to do for the next few hours:";
+      document.getElementById('dr-event-tips').innerHTML = drApplianceTips();
+      playSparkyVoice('sparky_dr_start.mp3', 'sparky_notify');
+    } else {
+      let credit = data.credit;
+      document.getElementById('dr-event-emoji').textContent = credit>=2 ? '🎉' : credit>0 ? '👍' : '⏰';
+      document.getElementById('dr-event-title').textContent = credit>=2 ? 'Bonus earned!' : credit>0 ? 'Partial bonus!' : 'Window ended';
+      document.getElementById('dr-event-subtitle').textContent = credit>=2
+        ? "Awesome! You kept your energy use low the whole window — you earned the full bonus!"
+        : credit>0
+        ? "Nice effort! You cut back enough to earn a partial bonus this time."
+        : "No bonus this time, but there's another chance later. Watch for the next power-saving window!";
+      document.getElementById('dr-event-tips').innerHTML = '';
+      playSparkyVoice(credit>=2?'sparky_dr_full.mp3':credit>0?'sparky_dr_partial.mp3':'sparky_dr_missed.mp3', 'sparky_notify');
+    }
+    drEventScreenEl.style.display = 'flex';
+  }
+  document.getElementById('dr-event-continue-btn').addEventListener('click', ()=>{
+    drEventScreenEl.style.display = 'none';
+    state.paused = false;
+    window.updateSpeedButtons(state.speedMultiplier);
+  });
+
   function showTutorialStep(){
     tutDismissBtn.style.display = 'none';
     if(tutorialStepIndex < TUTORIAL_DEVICE_STEPS.length){
@@ -2735,26 +2863,17 @@ async function initScene(){
   let liveLastAnnouncedTier = null;
   let liveOverdueNotified = { thermostat:false, hotwater:false, dishwasher:false, laundry:false, lights:false };
   function updateLiveNotifications(){
-    // ── demand-response start/end ──
+    // ── demand-response start/end — a blocking, actionable screen rather
+    // than a toast, since there's a specific target to act on (see
+    // showDrEventScreen/drApplianceTips above) ──
     if(state.drJustStarted){
       state.drJustStarted = false;
-      enqueueSparkyToast({
-        accent:'#93c5fd', title:'Power-saving window!',
-        text:"Heads up! A power-saving window just started. Use less energy for the next few hours and you could earn a bonus!",
-        voiceFile:'sparky_dr_start.mp3', voiceFolder:'sparky_notify',
-      });
+      showDrEventScreen('start');
     }
     if(state.drJustEnded){
       let credit = state.drJustEnded.credit;
       state.drJustEnded = null;
-      let title = credit>=2?'Bonus earned!':credit>0?'Partial bonus!':'Window ended';
-      let text = credit>=2
-        ? "Awesome! You kept your energy use low the whole window — you earned the full bonus!"
-        : credit>0
-        ? "Nice effort! You cut back enough to earn a partial bonus this time."
-        : "That power-saving window just ended — no bonus this time, but there's another chance later. Watch for the next one!";
-      let voiceFile = credit>=2?'sparky_dr_full.mp3':credit>0?'sparky_dr_partial.mp3':'sparky_dr_missed.mp3';
-      enqueueSparkyToast({ accent:'#93c5fd', title, text, voiceFile, voiceFolder:'sparky_notify' });
+      showDrEventScreen('end', {credit});
     }
 
     // ── rate-tier phase change, ~15 minutes ahead ──

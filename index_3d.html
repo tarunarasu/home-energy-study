@@ -33,13 +33,19 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
    to happen) plus a bouncing pointer projected onto whichever device is
    the current step's target ── */
 #tutorial-step-card{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:20;background:linear-gradient(180deg,#1c2a4a,#101827);border:2px solid rgba(74,222,128,0.55);border-radius:18px;padding:14px 26px;max-width:min(88%,480px);text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.5);pointer-events:none}
-/* Sparky's avatar — a real, visible circular portrait (not a tiny inline
-   icon) used everywhere Sparky appears: the tutorial card header and the
-   notification toasts. Dark disc + amber ring so the bolt-character reads
-   clearly against both the card and the 3D scene behind it. */
-.sparky-avatar{display:flex;align-items:center;justify-content:center;border-radius:50%;background:#0f1b33;border:2.5px solid #fbbf24;box-shadow:0 3px 14px rgba(251,191,36,0.45);flex-shrink:0}
-.sparky-avatar-lg{width:60px;height:60px;font-size:36px}
-.sparky-avatar-xl{width:78px;height:78px;font-size:47px;border-width:3px}
+/* Same compact in-scene card look as the tutorial, not the heavy full-screen
+   .game-overlay treatment — pointer-events:auto (unlike the tutorial card)
+   since this one should actually hold focus while the sim is paused. */
+#dr-event-screen{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:21;background:linear-gradient(180deg,#1c2a4a,#101827);border:2px solid rgba(147,197,253,0.6);border-radius:18px;padding:16px 26px;max-width:min(92%,420px);text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.5);pointer-events:auto}
+/* Sparky's figure — a real illustrated character (UI_Assets/Sparky/sparky.png,
+   transparent cutout), used everywhere Sparky appears: the tutorial card
+   header, notification toasts, and the DR event modal. No frame/background
+   — it's a real character cutout, so it's shown at full size with just a
+   drop-shadow for depth, deliberately taller than its container so it
+   reads as a figure standing beside the UI rather than an icon inside it. */
+.sparky-figure{display:block;flex-shrink:0;pointer-events:none;filter:drop-shadow(0 6px 12px rgba(0,0,0,0.5))}
+.sparky-figure-lg{height:110px}
+.sparky-figure-xl{height:150px}
 .tut-guide-header{display:flex;flex-direction:column;align-items:center;gap:5px;margin-bottom:6px}
 .tut-guide-name{font-size:12px;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:1px}
 .tut-emoji{font-size:30px;margin-bottom:2px}
@@ -54,11 +60,12 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
    overdue-device reminders. Deliberately opposite corner from the tutorial
    card (top-center) so the two never visually collide; non-blocking
    (pointer-events:none) since they're meant to be glanced at, not acted on.
-   Sparky sits on the right with the message rendered as a comic speech
-   bubble whose tail points back at his mouth — his position here is a
-   fixed top-right corner for now, but the toast/bubble/tail are all built
-   as one self-contained unit so where Sparky anchors can be changed later
-   (e.g. per notification type) without touching the bubble styling. */
+   Sparky stands on the right, taller than the bubble so he visibly rises
+   outside it (above and below) rather than being boxed in with the text —
+   center-aligned against the shorter bubble. His position here is a fixed
+   top-right corner for now, but the toast/bubble/figure are one
+   self-contained unit so where Sparky anchors can be changed later (e.g.
+   per notification type) without touching the bubble styling. */
 #sparky-toast{position:absolute;top:14px;right:14px;z-index:25;display:flex;align-items:center;gap:0;pointer-events:none;opacity:0;transform:translateX(16px);transition:opacity .25s ease, transform .25s ease}
 #sparky-toast.show{opacity:1;transform:translateX(0)}
 .sparky-toast-bubble{position:relative;background:linear-gradient(180deg,#1c2a4a,#101827);border:2px solid var(--sparky-accent,#fbbf24);border-radius:18px;padding:12px 18px;max-width:260px;box-shadow:0 10px 26px rgba(0,0,0,0.5);margin-right:14px}
@@ -218,18 +225,6 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
   </div>
 </div>
 
-<div class="game-overlay" id="dr-event-screen" style="display:none">
-  <div class="overlay-card">
-    <div class="sparky-avatar sparky-avatar-xl" id="dr-event-avatar" style="margin:0 auto 10px"></div>
-    <div class="tut-guide-name" style="margin-bottom:10px">Sparky</div>
-    <div class="overlay-emoji" id="dr-event-emoji">⚡</div>
-    <div class="overlay-title" id="dr-event-title"></div>
-    <div class="overlay-subtitle" id="dr-event-subtitle"></div>
-    <div class="dr-tips" id="dr-event-tips"></div>
-    <button class="game-btn" id="dr-event-continue-btn">Got it →</button>
-  </div>
-</div>
-
 <div class="game-overlay" id="end-screen" style="display:none">
   <canvas id="fireworks-canvas"></canvas>
   <div class="overlay-card">
@@ -273,7 +268,7 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
   <div id="scene-container"><div id="scene-status">loading…</div><div id="css2d-layer"></div>
     <div id="tutorial-step-card" style="display:none">
       <div class="tut-guide-header">
-        <div class="sparky-avatar sparky-avatar-lg" id="tut-sparky-avatar"></div>
+        <img class="sparky-figure sparky-figure-lg" src="UI_Assets/Sparky/sparky.png" alt="Sparky">
         <div class="tut-guide-name">Sparky</div>
       </div>
       <div class="tut-emoji" id="tut-step-emoji">🌡️</div>
@@ -281,6 +276,17 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
       <div class="tut-text" id="tut-step-text"></div>
       <div class="tut-progress" id="tut-step-progress"></div>
       <button class="tut-dismiss-btn" id="tut-dismiss-btn" style="display:none">Got it →</button>
+    </div>
+    <div id="dr-event-screen" style="display:none">
+      <div class="tut-guide-header">
+        <img class="sparky-figure sparky-figure-lg" src="UI_Assets/Sparky/sparky.png" alt="Sparky">
+        <div class="tut-guide-name">Sparky</div>
+      </div>
+      <div class="tut-emoji" id="dr-event-emoji">⚡</div>
+      <div class="tut-title" id="dr-event-title"></div>
+      <div class="tut-text" id="dr-event-subtitle"></div>
+      <div class="dr-tips" id="dr-event-tips"></div>
+      <button class="tut-dismiss-btn" id="dr-event-continue-btn">Got it →</button>
     </div>
     <div id="tutorial-pointer">👇</div>
     <div id="need-alerts-layer">
@@ -296,7 +302,7 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
         <div class="sparky-toast-title" id="sparky-toast-title"></div>
         <div class="sparky-toast-text" id="sparky-toast-text"></div>
       </div>
-      <div class="sparky-avatar sparky-avatar-xl" id="sparky-toast-portrait"></div>
+      <img class="sparky-figure sparky-figure-xl" src="UI_Assets/Sparky/sparky.png" alt="Sparky">
     </div>
   </div>
   <div id="control-panel">
@@ -2458,29 +2464,6 @@ async function initScene(){
   document.getElementById('laundryRunBtn').addEventListener('click',()=>{ startLaundry(); refreshPanel('laundry'); });
   document.getElementById('lightsToggleBtn').addEventListener('click',()=>{ toggleLights(!state.lightsOn); refreshPanel('lights'); updateLightsVisual(); });
 
-  // Sparky's portrait — a hand-drawn chibi thunder-kid mascot (spiky
-  // lightning-bolt hair, winged headband, lightning emblem on the cape),
-  // reused everywhere Sparky appears (tutorial header + notification
-  // toasts) so there's one source of truth for what "Sparky" looks like.
-  const SPARKY_SVG = '<svg viewBox="0 0 48 48" width="1em" height="1em" style="display:block">'
-    + '<path d="M9,48 L13,33 L35,33 L39,48 Z" fill="#f59e0b"/>'
-    + '<path d="M13,33 L35,33 L34,37 L14,37 Z" fill="#d97706"/>'
-    + '<rect x="20" y="27" width="8" height="7" fill="#f3c08a"/>'
-    + '<circle cx="24" cy="20" r="10.5" fill="#f8cd9c"/>'
-    + '<circle cx="13.5" cy="21" r="2.2" fill="#f8cd9c"/>'
-    + '<circle cx="34.5" cy="21" r="2.2" fill="#f8cd9c"/>'
-    + '<path d="M13,15 Q24,10 35,15 L35,17.5 Q24,13 13,17.5 Z" fill="#d97706"/>'
-    + '<path d="M13,16 C7,13 5,17 8,20 C10,18 12,17 14,17 Z" fill="#eab308"/>'
-    + '<path d="M35,16 C41,13 43,17 40,20 C38,18 36,17 34,17 Z" fill="#eab308"/>'
-    + '<path d="M14,14 L15,8 L18,13 L20,7 L23,13 L25,7 L28,13 L30,8 L32,14 Q23,10.5 14,14 Z" fill="#fde047"/>'
-    + '<circle cx="20" cy="21" r="1.6" fill="#1f2937"/>'
-    + '<circle cx="28" cy="21" r="1.6" fill="#1f2937"/>'
-    + '<circle cx="17.5" cy="24.5" r="1.8" fill="#f97316" opacity="0.35"/>'
-    + '<circle cx="30.5" cy="24.5" r="1.8" fill="#f97316" opacity="0.35"/>'
-    + '<path d="M20,25.5 Q24,28.5 28,25.5" stroke="#92400e" stroke-width="1.3" fill="none" stroke-linecap="round"/>'
-    + '<path d="M23,39 L25,39 L23.5,43 L26,43 L22,48 L23,44 L20.5,44 Z" fill="#fde047" stroke="#92400e" stroke-width="0.5"/>'
-    + '</svg>';
-
   // ══════════════════════════════════════════════════════════════════════
   // Guided tutorial — runs every session, before `gameStarted` ever flips
   // true (see the classic <script>'s start-btn handler), so the clock/cost
@@ -2515,7 +2498,6 @@ async function initScene(){
   let tutorialMoveArmed = false; // true once a walk has been started specifically for the move step, see the click handler + updateAvatar above
 
   const tutStepCard = document.getElementById('tutorial-step-card');
-  document.getElementById('tut-sparky-avatar').innerHTML = SPARKY_SVG;
   const tutPointerEl = document.getElementById('tutorial-pointer');
   const tutEmojiEl = document.getElementById('tut-step-emoji');
   const tutTitleEl = document.getElementById('tut-step-title');
@@ -2555,7 +2537,6 @@ async function initScene(){
   const sparkyToastPortraitEl = document.getElementById('sparky-toast-portrait');
   const sparkyToastTitleEl = document.getElementById('sparky-toast-title');
   const sparkyToastTextEl = document.getElementById('sparky-toast-text');
-  sparkyToastPortraitEl.innerHTML = SPARKY_SVG;
   let sparkyToastQueue = [];
   let sparkyToastActive = false;
   function enqueueSparkyToast(item){
@@ -2591,7 +2572,6 @@ async function initScene(){
   // based on its exact current state at the moment the window opens.
   // ══════════════════════════════════════════════════════════════════════
   const drEventScreenEl = document.getElementById('dr-event-screen');
-  document.getElementById('dr-event-avatar').innerHTML = SPARKY_SVG;
   const DEVICE_ACTION_TIPS = {
     hotwater: (on)=> on ? '🚿 Hot water is on — turn it off if you can.' : '🚿 Hot water is already off — keep it that way.',
     dishwasher: (running)=> running ? "🍽️ The dishwasher is running — let it finish, but hold off starting another load." : '🍽️ Keep the dishwasher off for now.',
@@ -2602,8 +2582,12 @@ async function initScene(){
     let rows = [];
     if(state.devices.thermostat){
       let target = drTargetSetpoint(state.drWindow.avgOutdoorTemp);
-      let duration = state.drWindow.event.endHour - state.drWindow.event.startHour;
-      rows.push('<div class="dr-tip-row dr-tip-main">🌡️ Set your thermostat to '+target+'°F for the next '+duration+' hours.</div>');
+      // clock end-time rather than an hour count — the count reads as
+      // wall-clock minutes at faster sim speeds and doesn't match how
+      // quickly the window actually passes; the HUD clock is right there
+      // to check against, so tying the tip to it removes the ambiguity
+      let endTime = fmtHourOfDay(state.drWindow.event.endHour);
+      rows.push('<div class="dr-tip-row dr-tip-main">🌡️ Set your thermostat to '+target+'°F until '+endTime+'.</div>');
     }
     if(state.devices.hotwater) rows.push('<div class="dr-tip-row">'+DEVICE_ACTION_TIPS.hotwater(state.hwOn)+'</div>');
     if(state.devices.dishwasher) rows.push('<div class="dr-tip-row">'+DEVICE_ACTION_TIPS.dishwasher(state.dish.running)+'</div>');
@@ -2617,22 +2601,22 @@ async function initScene(){
     if(kind === 'start'){
       document.getElementById('dr-event-emoji').textContent = '⚡';
       document.getElementById('dr-event-title').textContent = 'Power-saving window started!';
-      document.getElementById('dr-event-subtitle').textContent = "Electricity use matters right now — here's what to do for the next few hours:";
+      document.getElementById('dr-event-subtitle').textContent = "Electricity use matters right now — here's what to do:";
       document.getElementById('dr-event-tips').innerHTML = drApplianceTips();
       playSparkyVoice('sparky_dr_start.mp3', 'sparky_notify');
     } else {
-      let credit = data.credit;
+      let credit = data.credit; // credit IS the dollar amount added to state.drSavings — 2/1/0
       document.getElementById('dr-event-emoji').textContent = credit>=2 ? '🎉' : credit>0 ? '👍' : '⏰';
       document.getElementById('dr-event-title').textContent = credit>=2 ? 'Bonus earned!' : credit>0 ? 'Partial bonus!' : 'Window ended';
       document.getElementById('dr-event-subtitle').textContent = credit>=2
-        ? "Awesome! You kept your energy use low the whole window — you earned the full bonus!"
+        ? "Awesome! You kept your energy use low the whole window — you earned a $2.00 bonus!"
         : credit>0
-        ? "Nice effort! You cut back enough to earn a partial bonus this time."
-        : "No bonus this time, but there's another chance later. Watch for the next power-saving window!";
+        ? "Nice effort! You cut back enough to earn a $1.00 bonus this time."
+        : "No bonus this time (that would've been $2.00) — there's another chance later. Watch for the next power-saving window!";
       document.getElementById('dr-event-tips').innerHTML = '';
       playSparkyVoice(credit>=2?'sparky_dr_full.mp3':credit>0?'sparky_dr_partial.mp3':'sparky_dr_missed.mp3', 'sparky_notify');
     }
-    drEventScreenEl.style.display = 'flex';
+    drEventScreenEl.style.display = 'block';
   }
   document.getElementById('dr-event-continue-btn').addEventListener('click', ()=>{
     drEventScreenEl.style.display = 'none';

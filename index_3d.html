@@ -135,6 +135,9 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
 .dr-tips{text-align:left;margin:4px 0 22px;display:flex;flex-direction:column;gap:8px}
 .dr-tip-row{background:rgba(255,255,255,0.06);border:1px solid rgba(147,197,253,0.25);border-radius:10px;padding:11px 15px;font-size:16px;color:rgba(255,255,255,0.9);line-height:1.4}
 .dr-tip-row.dr-tip-main{background:rgba(147,197,253,0.14);border-color:rgba(147,197,253,0.5);font-weight:600}
+.dr-tip-row.dr-tip-clickable{cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;transition:background .12s ease,border-color .12s ease}
+.dr-tip-row.dr-tip-clickable:hover{background:rgba(74,222,128,0.14);border-color:rgba(74,222,128,0.55)}
+.dr-tip-go{flex-shrink:0;font-size:13px;font-weight:700;color:#4ade80;white-space:nowrap}
 .game-btn{font-family:'Fredoka',sans-serif;background:linear-gradient(180deg,#4ade80,#22c55e);color:#052e12;border:none;border-radius:16px;padding:16px 34px;font-size:22px;font-weight:600;cursor:pointer;box-shadow:0 4px 0 #15803d, 0 6px 14px rgba(0,0,0,0.3);transition:transform .08s ease;margin:4px}
 .game-btn-secondary{font-family:'Fredoka',sans-serif;background:transparent;color:rgba(255,255,255,0.55);border:none;padding:10px 18px;font-size:15px;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:3px;margin:4px;display:block}
 .game-btn-secondary:hover{color:rgba(255,255,255,0.8)}
@@ -1923,6 +1926,7 @@ async function initScene(){
   const AVATAR_BOB_HEIGHT = 0.09; // units — vertical hip-bob amplitude while walking
   const AVATAR_BOB_CYCLES = 2; // bounces per full walk-clip loop (one per footfall)
   let pendingApplianceId = null; // set when a device click sends the rabbit walking over; its panel opens once the rabbit actually arrives
+  let pendingDrAction = null; // set when a DR-tip click sends the rabbit walking over; the actual setting change fires once the rabbit arrives
   function moveAvatarTo(target){
     if(!avatar) return;
     let fromIdx = zoneIndexOf(avatar.position.x, avatar.position.z);
@@ -1975,6 +1979,11 @@ async function initScene(){
         let id = pendingApplianceId;
         pendingApplianceId = null;
         selectAppliance(id);
+      }
+      if(pendingDrAction){
+        let fn = pendingDrAction;
+        pendingDrAction = null;
+        fn();
       }
       if(tutorialMoveArmed){ tutorialMoveArmed = false; advanceTutorial(); } // the tutorial's "click the floor to walk" step just finished for real
       return;
@@ -2578,11 +2587,15 @@ async function initScene(){
   // ══════════════════════════════════════════════════════════════════════
   const drEventScreenEl = document.getElementById('dr-event-screen');
   const DEVICE_ACTION_TIPS = {
-    hotwater: (on)=> on ? '🚿 Hot water is on — turn it off if you can.' : '🚿 Hot water is already off — keep it that way.',
     dishwasher: (running)=> running ? "🍽️ The dishwasher is running — let it finish, but hold off starting another load." : '🍽️ Keep the dishwasher off for now.',
     laundry: (running)=> running ? "👕 The washing machine is running — let it finish, but hold off starting another load." : '👕 Keep the laundry off for now.',
-    lights: (on)=> on ? "💡 Turn off the lights if you don't need them right now." : '💡 Lights are already off — nice.',
   };
+  // dishwasher/laundry have no real "do it" action here (no in-game way to
+  // stop a run or lock out a future start), so they stay plain informational
+  // rows; thermostat/hot-water/lights each have a genuine one-click fix and
+  // get the clickable "Do it →" treatment, reusing the exact same
+  // walk-then-arrive pattern the appliance click handler already uses
+  // (moveAvatarTo + a pending-callback flag checked in updateAvatar).
   function drApplianceTips(){
     let rows = [];
     if(state.devices.thermostat){
@@ -2592,14 +2605,48 @@ async function initScene(){
       // quickly the window actually passes; the HUD clock is right there
       // to check against, so tying the tip to it removes the ambiguity
       let endTime = fmtHourOfDay(state.drWindow.event.endHour);
-      rows.push('<div class="dr-tip-row dr-tip-main">🌡️ Set your thermostat to '+target+'°F until '+endTime+'.</div>');
+      rows.push('<div class="dr-tip-row dr-tip-main dr-tip-clickable" data-appliance="thermostat">🌡️ Set your thermostat to '+target+'°F until '+endTime+'.<span class="dr-tip-go">Do it →</span></div>');
     }
-    if(state.devices.hotwater) rows.push('<div class="dr-tip-row">'+DEVICE_ACTION_TIPS.hotwater(state.hwOn)+'</div>');
+    if(state.devices.hotwater){
+      rows.push(state.hwOn
+        ? '<div class="dr-tip-row dr-tip-clickable" data-appliance="hotwater">🚿 Hot water is on — turn it off if you can.<span class="dr-tip-go">Do it →</span></div>'
+        : '<div class="dr-tip-row">🚿 Hot water is already off — keep it that way.</div>');
+    }
     if(state.devices.dishwasher) rows.push('<div class="dr-tip-row">'+DEVICE_ACTION_TIPS.dishwasher(state.dish.running)+'</div>');
     if(state.devices.laundry) rows.push('<div class="dr-tip-row">'+DEVICE_ACTION_TIPS.laundry(state.laundry.running)+'</div>');
-    if(state.devices.lights) rows.push('<div class="dr-tip-row">'+DEVICE_ACTION_TIPS.lights(state.lightsOn)+'</div>');
+    if(state.devices.lights){
+      rows.push(state.lightsOn
+        ? '<div class="dr-tip-row dr-tip-clickable" data-appliance="lights">💡 Turn off the lights if you don\'t need them right now.<span class="dr-tip-go">Do it →</span></div>'
+        : '<div class="dr-tip-row">💡 Lights are already off — nice.</div>');
+    }
     return rows.join('');
   }
+  // fires the rabbit walking to the appliance, applying the DR-suggested
+  // change and opening its panel once it actually arrives — same
+  // pendingApplianceId/updateAvatar pattern the normal appliance click uses
+  function drGoAndApply(id, applyFn){
+    dismissDrEventScreen();
+    if(avatar){
+      pendingDrAction = ()=>{ applyFn(); selectAppliance(id); };
+      moveAvatarTo(appliances[id].position);
+    } else {
+      applyFn();
+      selectAppliance(id);
+    }
+  }
+  document.getElementById('dr-event-tips').addEventListener('click', (evt)=>{
+    let row = evt.target.closest('.dr-tip-clickable');
+    if(!row) return;
+    let id = row.dataset.appliance;
+    if(id === 'thermostat'){
+      let target = drTargetSetpoint(state.drWindow.avgOutdoorTemp);
+      drGoAndApply('thermostat', ()=>setThermostat(target));
+    } else if(id === 'hotwater'){
+      drGoAndApply('hotwater', ()=>toggleHotWater(false));
+    } else if(id === 'lights'){
+      drGoAndApply('lights', ()=>{ toggleLights(false); updateLightsVisual(); });
+    }
+  });
   function showDrEventScreen(kind, data){
     state.paused = true;
     window.updateSpeedButtons(0);
@@ -2623,11 +2670,12 @@ async function initScene(){
     }
     drEventScreenEl.style.display = 'flex';
   }
-  document.getElementById('dr-event-continue-btn').addEventListener('click', ()=>{
+  function dismissDrEventScreen(){
     drEventScreenEl.style.display = 'none';
     state.paused = false;
     window.updateSpeedButtons(state.speedMultiplier);
-  });
+  }
+  document.getElementById('dr-event-continue-btn').addEventListener('click', dismissDrEventScreen);
 
   function showTutorialStep(){
     tutDismissBtn.style.display = 'none';

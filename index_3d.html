@@ -33,7 +33,15 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
    to happen) plus a bouncing pointer projected onto whichever device is
    the current step's target ── */
 #tutorial-step-card{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:20;background:linear-gradient(180deg,#1c2a4a,#101827);border:2px solid rgba(74,222,128,0.55);border-radius:18px;padding:14px 26px;max-width:min(88%,480px);text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.5);pointer-events:none}
-.tut-guide-badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#fbbf24;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.4);border-radius:20px;padding:3px 12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px}
+/* Sparky's avatar — a real, visible circular portrait (not a tiny inline
+   icon) used everywhere Sparky appears: the tutorial card header and the
+   notification toasts. Dark disc + amber ring so the bolt-character reads
+   clearly against both the card and the 3D scene behind it. */
+.sparky-avatar{display:flex;align-items:center;justify-content:center;border-radius:50%;background:#0f1b33;border:2.5px solid #fbbf24;box-shadow:0 3px 14px rgba(251,191,36,0.45);flex-shrink:0}
+.sparky-avatar-lg{width:60px;height:60px;font-size:36px}
+.sparky-avatar-md{width:44px;height:44px;font-size:26px}
+.tut-guide-header{display:flex;flex-direction:column;align-items:center;gap:5px;margin-bottom:6px}
+.tut-guide-name{font-size:12px;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:1px}
 .tut-emoji{font-size:30px;margin-bottom:2px}
 .tut-title{font-size:21px;font-weight:600;color:#fff;margin-bottom:4px}
 .tut-text{font-size:15px;color:rgba(255,255,255,0.75);line-height:1.4}
@@ -48,7 +56,7 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
    (pointer-events:none) since they're meant to be glanced at, not acted on. */
 #sparky-toast{position:absolute;top:14px;right:14px;z-index:25;display:flex;gap:10px;align-items:flex-start;background:linear-gradient(180deg,#1c2a4a,#101827);border:2px solid var(--sparky-accent,#fbbf24);border-radius:16px;padding:12px 16px;max-width:300px;box-shadow:0 10px 26px rgba(0,0,0,0.5);pointer-events:none;opacity:0;transform:translateX(16px);transition:opacity .25s ease, transform .25s ease}
 #sparky-toast.show{opacity:1;transform:translateX(0)}
-.sparky-toast-portrait{flex-shrink:0;margin-top:2px;font-size:32px;line-height:1}
+.sparky-toast-name{font-size:10px;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px}
 .sparky-toast-title{font-size:14px;font-weight:700;color:#fff;margin-bottom:3px}
 .sparky-toast-text{font-size:13px;color:rgba(255,255,255,0.75);line-height:1.4}
 
@@ -239,7 +247,10 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
 <div id="game-layout">
   <div id="scene-container"><div id="scene-status">loading…</div><div id="css2d-layer"></div>
     <div id="tutorial-step-card" style="display:none">
-      <div class="tut-guide-badge">⚡ Sparky</div>
+      <div class="tut-guide-header">
+        <div class="sparky-avatar sparky-avatar-lg" id="tut-sparky-avatar"></div>
+        <div class="tut-guide-name">Sparky</div>
+      </div>
       <div class="tut-emoji" id="tut-step-emoji">🌡️</div>
       <div class="tut-title" id="tut-step-title">Thermostat</div>
       <div class="tut-text" id="tut-step-text"></div>
@@ -255,8 +266,9 @@ h1{font-size:32px;font-weight:600;color:#fff;margin-bottom:6px;letter-spacing:0.
       <div class="need-alert" id="alert-lights">💡</div>
     </div>
     <div id="sparky-toast" style="display:none">
-      <div class="sparky-toast-portrait" id="sparky-toast-portrait"></div>
+      <div class="sparky-avatar sparky-avatar-md" id="sparky-toast-portrait"></div>
       <div class="sparky-toast-body">
+        <div class="sparky-toast-name">Sparky</div>
         <div class="sparky-toast-title" id="sparky-toast-title"></div>
         <div class="sparky-toast-text" id="sparky-toast-text"></div>
       </div>
@@ -2416,7 +2428,7 @@ async function initScene(){
   let tutorialMoveArmed = false; // true once a walk has been started specifically for the move step, see the click handler + updateAvatar above
 
   const tutStepCard = document.getElementById('tutorial-step-card');
-  document.querySelector('.tut-guide-badge').innerHTML = SPARKY_SVG + ' Sparky'; // swap the plain ⚡ emoji for the real portrait
+  document.getElementById('tut-sparky-avatar').innerHTML = SPARKY_SVG;
   const tutPointerEl = document.getElementById('tutorial-pointer');
   const tutEmojiEl = document.getElementById('tut-step-emoji');
   const tutTitleEl = document.getElementById('tut-step-title');

@@ -2389,10 +2389,28 @@ async function initScene(){
   document.getElementById('laundryRunBtn').addEventListener('click',()=>{ startLaundry(); refreshPanel('laundry'); });
   document.getElementById('lightsToggleBtn').addEventListener('click',()=>{ toggleLights(!state.lightsOn); refreshPanel('lights'); updateLightsVisual(); });
 
-  // Sparky's portrait — a small hand-drawn lightning-bolt mascot, reused
-  // everywhere Sparky appears (tutorial badge + notification toasts) so
-  // there's one source of truth for what "Sparky" looks like.
-  const SPARKY_SVG = '<svg viewBox="0 0 48 48" width="1em" height="1em" style="display:block"><path d="M27 3 C28 2 30 3 29 5 L18 24 L26 24 C28 24 29 26 27 28 L18 45 C17 46 15 45 16 43 L24 26 L17 26 C15 26 14 24 15 22 Z" fill="#fbbf24" stroke="#b45309" stroke-width="2" stroke-linejoin="round"/><circle cx="20" cy="16" r="2" fill="#1f2937"/><circle cx="26" cy="14" r="2" fill="#1f2937"/><path d="M18 21 Q23 25 28 19" stroke="#1f2937" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';
+  // Sparky's portrait — a hand-drawn chibi thunder-kid mascot (spiky
+  // lightning-bolt hair, winged headband, lightning emblem on the cape),
+  // reused everywhere Sparky appears (tutorial header + notification
+  // toasts) so there's one source of truth for what "Sparky" looks like.
+  const SPARKY_SVG = '<svg viewBox="0 0 48 48" width="1em" height="1em" style="display:block">'
+    + '<path d="M9,48 L13,33 L35,33 L39,48 Z" fill="#f59e0b"/>'
+    + '<path d="M13,33 L35,33 L34,37 L14,37 Z" fill="#d97706"/>'
+    + '<rect x="20" y="27" width="8" height="7" fill="#f3c08a"/>'
+    + '<circle cx="24" cy="20" r="10.5" fill="#f8cd9c"/>'
+    + '<circle cx="13.5" cy="21" r="2.2" fill="#f8cd9c"/>'
+    + '<circle cx="34.5" cy="21" r="2.2" fill="#f8cd9c"/>'
+    + '<path d="M13,15 Q24,10 35,15 L35,17.5 Q24,13 13,17.5 Z" fill="#d97706"/>'
+    + '<path d="M13,16 C7,13 5,17 8,20 C10,18 12,17 14,17 Z" fill="#eab308"/>'
+    + '<path d="M35,16 C41,13 43,17 40,20 C38,18 36,17 34,17 Z" fill="#eab308"/>'
+    + '<path d="M14,14 L15,8 L18,13 L20,7 L23,13 L25,7 L28,13 L30,8 L32,14 Q23,10.5 14,14 Z" fill="#fde047"/>'
+    + '<circle cx="20" cy="21" r="1.6" fill="#1f2937"/>'
+    + '<circle cx="28" cy="21" r="1.6" fill="#1f2937"/>'
+    + '<circle cx="17.5" cy="24.5" r="1.8" fill="#f97316" opacity="0.35"/>'
+    + '<circle cx="30.5" cy="24.5" r="1.8" fill="#f97316" opacity="0.35"/>'
+    + '<path d="M20,25.5 Q24,28.5 28,25.5" stroke="#92400e" stroke-width="1.3" fill="none" stroke-linecap="round"/>'
+    + '<path d="M23,39 L25,39 L23.5,43 L26,43 L22,48 L23,44 L20.5,44 Z" fill="#fde047" stroke="#92400e" stroke-width="0.5"/>'
+    + '</svg>';
 
   // ══════════════════════════════════════════════════════════════════════
   // Guided tutorial — runs every session, before `gameStarted` ever flips
